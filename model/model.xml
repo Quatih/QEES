@@ -4,7 +4,7 @@
 clock time;
 typedef int[0, 10000000] time_t;
 typedef int[-4000, 20000] power_t;
-typedef int[0, 149760000] battery_t;
+typedef int[0, 149760000] charge_t;
 
 time_t new_time = 0;
 
@@ -69,7 +69,8 @@ void nextJob(const int job_id){
 }
 
 bool skipable(const int job_id){
-  return false;
+  if (job_id == 3) return false; // force UHF to execute if able
+  return true;
 }
 
 </declaration><template><name>Job1</name><declaration>const int job_id = 0;</declaration><location id="id0" x="536" y="80"><name x="526" y="50">End</name><committed/></location><location id="id1" x="72" y="80"><name x="62" y="50">Penalty</name><label kind="invariant" x="62" y="95">cost'==
