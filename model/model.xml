@@ -1,0 +1,148 @@
+<?xml version="1.0" encoding="utf-8"?><!DOCTYPE nta PUBLIC '-//Uppaal Team//DTD Flat System 1.1//EN' 'http://www.it.uu.se/research/group/darts/uppaal/flat-1_1.dtd'><nta><declaration>// Place global declarations here.
+
+clock time;
+
+const int job_ids = 4; 
+// L1-Band, L2-Band, X-Band, UHF
+
+// length of sun times
+const int l_sun = 0;
+// The start times of each insolation period
+const int _start_sun [l_sun] = {};
+const int _stop_sun [l_sun] = {};
+
+
+typedef struct{
+  const int start_times [l_sun];
+  const int stop_times [l_sun];
+  const int length;
+  int pos = 0;
+} sun_times;
+
+const int l_x = 0;
+const int _start_x[l_x] = {};
+const int _stop_x[l_x] = {};
+
+typedef struct{
+  const int start_times[l_x];
+  const int stop_times[l_x];
+  const int length;
+  int pos = 0;
+} x_times;
+
+const int l_l1 = 0;
+const int _start_l1[l_l1] = {};
+const int _stop_l1[l_l1] = {};
+
+typedef struct{
+  const int start_times[l_l1];
+  const int stop_times[l_l1];
+  const int length;
+  int pos = 0;
+} l1_times;
+
+const int l_l2 = 0;
+const int arr_l2[l_l2]  = {};
+
+typedef struct{
+  const int start_times[l_l2];
+  const int stop_times[l_l2];
+  const int length;
+  int pos = 0;
+} l2_times;
+
+const int l_uhf = 0;
+const int arr_uhf[l_uhf] = {};
+
+typedef struct{
+  const int start_times[l_uhf];
+  const int stop_times[l_uhf];
+  const int length;
+  int pos = 0;
+} uhf_times;
+
+const int job_times[job_ids] = {
+  struct l1_times {arr_l1, l_l1, 0}, 
+  struct l2_times {arr_l2, l_l2, 0}, 
+  struct x_times {arr_x, l_x, 0}, 
+  struct uhf_times {arr_uhf, l_uhf, 0}, 
+};
+
+const int preheat_time [job_ids] = {
+  20*60,// L1-band
+  20*60,// L2-band
+  20*60,// X-band
+  0,//UHF
+}
+
+int cost(int id){
+  int cost;
+  return cost; 
+}
+
+bool skipable(const int job_id){
+  
+}
+
+</declaration><template><name>Job1</name><declaration>const int job_id = 0;</declaration><location id="id0" x="536" y="80"><name x="526" y="50">End</name><committed/></location><location id="id1" x="72" y="80"><name x="62" y="50">Penalty</name><label kind="invariant" x="62" y="95">cost'==
+costRate(job_id)</label></location><location id="id2" x="-64" y="80"><name x="-74" y="50">Skip</name></location><location id="id3" x="536" y="360"><name x="552" y="314">SlewingBack</name></location><location id="id4" x="536" y="216"><name x="560" y="200">Check_Attitude</name><committed/></location><location id="id5" x="376" y="208"><name x="366" y="178">Available</name><committed/></location><location id="id6" x="-64" y="208"><name x="-74" y="178">Idle</name></location><location id="id7" x="112" y="208"><name x="102" y="178">Align</name><committed/></location><location id="id8" x="376" y="80"><name x="366" y="50">Start</name></location><location id="id9" x="240" y="80"><name x="230" y="50">Slewing</name></location><location id="id10" x="240" y="208"><name x="230" y="178">Correct_Attitude</name></location><init ref="id6"/><transition><source ref="id0"/><target ref="id4"/><label kind="synchronisation" x="472" y="128">bUpdate!</label></transition><transition><source ref="id4"/><target ref="id6"/><label kind="guard" x="128" y="272">!hasToSlewBack(job_id)</label><nail x="440" y="312"/><nail x="8" y="312"/></transition><transition><source ref="id1"/><target ref="id6"/><label kind="synchronisation" x="-40" y="128">not_available[job_id]?</label></transition><transition><source ref="id6"/><target ref="id2"/><label kind="guard" x="-160" y="120">skipable(job_id)</label><label kind="synchronisation" x="-160" y="136">preHeat[job_id]?</label></transition><transition><source ref="id2"/><target ref="id1"/><label kind="synchronisation" x="-40" y="56">available[job_id]?</label></transition><transition><source ref="id8"/><target ref="id0"/><label kind="synchronisation" x="400" y="56">not_available[job_id]?</label><label kind="assignment" x="400" y="40">endExperiment(job_id)</label></transition><transition><source ref="id3"/><target ref="id6"/><label kind="synchronisation" x="168" y="320">reached?</label><label kind="assignment" x="168" y="336">unlockIfNeeded(job_id)</label><nail x="-64" y="360"/></transition><transition><source ref="id4"/><target ref="id3"/><label kind="guard" x="546" y="245">hasToSlewBack(job_id)</label><label kind="synchronisation" x="544" y="264">alignTo[a_N]!</label></transition><transition><source ref="id10"/><target ref="id5"/><label kind="synchronisation" x="264" y="208">available[job_id]?</label><label kind="assignment" x="264" y="223">startExperiment(job_id)</label></transition><transition><source ref="id6"/><target ref="id7"/><label kind="guard" x="-8" y="154">exp_possible(job_id)</label><label kind="synchronisation" x="-8" y="169">preHeat[job_id]?</label><label kind="assignment" x="-8" y="184">lockIfNeeded(job_id)</label></transition><transition><source ref="id7"/><target ref="id10"/><label kind="guard" x="128" y="208">isAligned(job_id)</label></transition><transition><source ref="id5"/><target ref="id8"/><label kind="synchronisation" x="384" y="128">bUpdate!</label></transition><transition><source ref="id9"/><target ref="id10"/><label kind="synchronisation" x="248" y="144">reached?</label></transition><transition><source ref="id7"/><target ref="id9"/><label kind="guard" x="112" y="152">!isAligned(job_id)</label><label kind="synchronisation" x="112" y="136">alignTo[a_nfe[job_id]]!</label></transition></template><template><name>JobProvider1</name><declaration>const p_id job_id=0;</declaration><location id="id11" x="40" y="80"><name x="30" y="50">Idle</name><label kind="invariant" x="30" y="95">gc &lt;= expPreheatTime(job_id)</label></location><location id="id12" x="190" y="80"><name x="180" y="50">Available</name><label kind="invariant" x="180" y="95">gc &lt;= expEndTime(job_id)</label></location><location id="id13" x="190" y="230"><name x="180" y="200">PreHeat</name><label kind="invariant" x="180" y="245">gc &lt;= expStartTime(job_id)</label></location><init ref="id11"/><transition><source ref="id11"/><target ref="id13"/><label kind="guard" x="55" y="125">gc == expPreheatTime(job_id)</label><label kind="synchronisation" x="55" y="140">preHeat[job_id]!</label><label kind="assignment" x="55" y="155">new_time = expPreheatTime(job_id)</label></transition><transition><source ref="id13"/><target ref="id12"/><label kind="guard" x="130" y="125">gc == expStartTime(job_id)</label><label kind="synchronisation" x="130" y="140">available[job_id]!</label><label kind="assignment" x="130" y="155">new_time = expStartTime(job_id)</label></transition><transition><source ref="id12"/><target ref="id11"/><label kind="guard" x="55" y="50">gc == expEndTime(job_id)</label><label kind="synchronisation" x="55" y="65">not_available[job_id]!</label><label kind="assignment" x="55" y="80">update(job_id)</label></transition></template><template><name>Battery</name><parameter>const soc_t lb, const soc_t ub</parameter><declaration>load_t load = 0;
+Int old_time = 0;
+//meta int par;
+
+void update(){
+    soc -= load * (new_time - old_time);
+    if (soc &gt; ub){    //align to bound
+        soc = ub;
+    }
+    old_time = new_time;
+    load = default_bg_load;
+    //par = 0;
+    for(job_id:p_id){
+        load += pa[job_id] ? power_p[job_id] : 0;
+        //par += pa[job_id] ? 1 : 0;
+    }
+    //if (par &gt; 1) soc = 0;
+    load += slewing ? power_slewing : 0;
+    load -= insolation ? power_g[a] : 0;
+    if (load &gt; max_load) soc = 0; //deadlock
+}
+
+
+bool depleted(){
+    return soc &lt;= lb;
+}</declaration><location id="id14" x="-96" y="232"><name x="-106" y="202">Init</name><committed/></location><location id="id15" x="176" y="232"><name x="166" y="202">Check</name><committed/></location><location id="id16" x="304" y="232"><name x="294" y="202">Depletion</name><committed/></location><location id="id17" x="40" y="232"><name x="30" y="202">Idle</name></location><init ref="id14"/><transition><source ref="id14"/><target ref="id17"/><label kind="assignment" x="-56" y="208">update()</label></transition><transition><source ref="id17"/><target ref="id15"/><label kind="synchronisation" x="55" y="140">bUpdate?</label><label kind="assignment" x="176" y="160">update()</label></transition><transition><source ref="id15"/><target ref="id17"/><label kind="guard" x="88" y="208">soc &gt; lb</label></transition><transition><source ref="id15"/><target ref="id16"/><label kind="guard" x="216" y="208">soc &lt;= lb</label></transition></template><template><name>Sun</name><declaration>bool updateAfterInsolationEnd = 0 ;
+
+void eclipseEnd(){
+    insolation = true;
+    new_time = eclipseEndTime();
+    if(!updateAfterInsolationEnd) sun_c++;
+}
+
+void insolationEnd(){
+    insolation = false;
+    new_time = insolationEndTime();
+    if(updateAfterInsolationEnd) sun_c++;
+}</declaration><location id="id18" x="40" y="80"><name x="30" y="50">Init</name><committed/></location><location id="id19" x="190" y="80"><name x="180" y="50">Eclipse</name><label kind="invariant" x="180" y="95">gc&lt;=eclipseEndTime()</label></location><location id="id20" x="190" y="230"><name x="180" y="200">Insolation</name><label kind="invariant" x="180" y="245">gc &lt;= insolationEndTime()</label></location><init ref="id18"/><transition><source ref="id18"/><target ref="id20"/><label kind="guard" x="55" y="125">eclipseEndTime() &gt; insolationEndTime()</label><label kind="assignment" x="55" y="155">insolation=true,
+updateAfterInsolationEnd=false</label></transition><transition><source ref="id18"/><target ref="id19"/><label kind="guard" x="55" y="50">eclipseEndTime() &lt;= insolationEndTime()</label><label kind="assignment" x="55" y="80">updateAfterInsolationEnd=true</label></transition><transition><source ref="id19"/><target ref="id20"/><label kind="guard" x="130" y="125">gc == eclipseEndTime()</label><label kind="synchronisation" x="130" y="140">bUpdate!</label><label kind="assignment" x="130" y="155">eclipseEnd()</label></transition><transition><source ref="id20"/><target ref="id19"/><label kind="guard" x="130" y="125">gc == insolationEndTime()</label><label kind="synchronisation" x="130" y="140">bUpdate!</label><label kind="assignment" x="130" y="155">insolationEnd()</label></transition></template><template><name>Termination</name><declaration>void last(){
+	new_time = 86400 ;
+}</declaration><location id="id21" x="40" y="80"><name x="30" y="50">Idle</name><label kind="invariant" x="30" y="95">gc &lt;= 86400</label></location><location id="id22" x="190" y="80"><name x="180" y="50">Inter</name><committed/></location><location id="id23" x="190" y="230"><name x="208" y="216">Lock</name><committed/></location><init ref="id21"/><transition><source ref="id21"/><target ref="id22"/><label kind="guard" x="55" y="50">gc == 86400</label><label kind="synchronisation" x="55" y="65">bUpdate!</label><label kind="assignment" x="55" y="80">last()</label></transition><transition><source ref="id22"/><target ref="id23"/><label kind="assignment" x="200" y="136">cost += (0 == 0) ? 0 : ((capacity - soc) / 0)</label></transition></template><system>AC = AttitudeControl();
+B = Battery(safe_threshold, capacity);
+//OC = OrbitCounter();
+E0 = Experiment0();
+E1 = Experiment1();
+E2 = Experiment2();
+E3 = Experiment3();
+E4 = Experiment4();
+E5 = Experiment5();
+E6 = Experiment6();
+EP0 = Exp_Provider0();
+EP1 = Exp_Provider1();
+EP2 = Exp_Provider2();
+EP3 = Exp_Provider3();
+EP4 = Exp_Provider4();
+EP5 = Exp_Provider5();
+EP6 = Exp_Provider6();
+T = Termination();
+
+// List one or more processes to be composed into a system.
+system E0, E1, E2, E3, E4, E5, E6, EP0, EP1, EP2, EP3, EP4, EP5, EP6, Sun, AC, B, T;</system></nta>
