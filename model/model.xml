@@ -37,6 +37,8 @@ const int start_uhf[l_uhf] = {60917, 66429, 72087, 77787, 83507, 89317, 148887, 
 const int stop_uhf[l_uhf] = {61141, 66947, 72667, 78366, 84023, 89530, 149330, 155067, 160775, 166457, 172058 };
 
 int ind[job_ids] = {0,0,0,0};
+bool running[job_ids] = {false, false, false, false};
+int job_count[job_ids] = {0,0,0,0};
 
 const int preheat_time [job_ids] = {
   20*60,// L1-band
@@ -71,6 +73,28 @@ void nextJob(const int job_id){
 bool skipable(const int job_id){
   if (job_id == 3) return false; // force UHF to execute if able
   return true;
+}
+
+void startJob(const int job_id){
+  running[job_id] = true;
+  if (job_id < 2) r = r + r_x;//L band
+  if (job_id == 2) r = r - r_l; //X-band
+}
+
+void stopJob(const int job_id){
+  running[job_id] = false;
+  job_count[job_id] = job_count[job_id] + 1;
+}
+int r = 0;
+int r_l = 1;
+int r_x = 2;
+
+bool job_possible(const int job_id){
+  if(job_id == 3) return true; // prioritize UHF
+  // heuristics
+  if(job_id == 2 && r >= r_l) return true; // x-band
+  if(job_id <2 && r < (r_x+r_l)*r_l) return true; // l-band
+  return false;
 }
 
 </declaration><template><name>Job1</name><declaration>const int job_id = 0;</declaration><location id="id0" x="536" y="80"><name x="526" y="50">End</name><committed/></location><location id="id1" x="72" y="80"><name x="62" y="50">Penalty</name><label kind="invariant" x="62" y="95">cost'==
