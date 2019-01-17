@@ -12,6 +12,14 @@ time_t new_time = 0;
 const int job_ids = 4; 
 // L1-Band, L2-Band, X-Band, UHF
 
+const int no_att = 3; //default = 0, l1/l2 = 1, x = 2 
+
+int curr_att = 0;
+
+bool slewing = false;
+
+const int job_att[job_ids] = {0, 0, 1, -1}; // UHF is attitude agnostic
+
 chan preHeat[job_ids], available[job_ids], not_available[job_ids];
 
 // length of sun times
@@ -41,10 +49,15 @@ int ind[job_ids] = {0,0,0,0};
 bool running[job_ids] = {false, false, false, false};
 int job_count[job_ids] = {0,0,0,0};
 
+// heuristic variables for l and x band ratios 
+int r = 0;
+const int r_l = 1;
+const int r_x = 2;
+
 const int preheat_time [job_ids] = {
   20*60,// L1-band
   20*60,// L2-band
-  10*60,// X-band
+  0,// X-band
   0//UHF
 };
 
@@ -86,15 +99,27 @@ void stopJob(const int job_id){
   running[job_id] = false;
   job_count[job_id] = job_count[job_id] + 1;
 }
-int r = 0;
-int r_l = 1;
-int r_x = 2;
 
 bool job_possible(const int job_id){
   if(job_id == 3) return true; // prioritize UHF
+  if(slewing) return false; // another L or xband job working
   // heuristics
   if((job_id == 2) && (r >= r_l)) return true; // x-band
   if((job_id <2) && (r < (r_x+r_l)*r_l)) return true; // l-band
+  return false;
+}
+
+void lockIfNeeded(const int job_id){
+    if ((job_att[job_id] >= 0) && (curr_att != job_att[job_id])) slewing = true; // lock only if slewing required 
+}
+
+void unlockIfNeeded(const int job_id){
+    if (job_att[job_id] >= 0) slewing = false; // unlock only if job requires slewing
+}
+
+bool isAligned(const int job_id){
+  if (job_att[job_id] == -1) return true;
+  if (job_att[job_id] == curr_att) return true;
   return false;
 }
 
