@@ -1,13 +1,13 @@
 
 // Place global declarations here.
 
-
 clock time;
 typedef int[0, 10000000] time_t;
 typedef int[-4000, 20000] power_t;
 typedef int[0, 149760000] charge_t;
-
 time_t new_time = 0;
+time_t slewing_start = 0;
+time_t slewing_end = 0;
 
 const int job_ids = 4; 
 // L1-Band, L2-Band, X-Band, UHF
@@ -21,7 +21,7 @@ bool slewing = false;
 const int job_att[job_ids] = {0, 0, 1, -1}; // UHF is attitude agnostic
 
 chan preHeat[job_ids], available[job_ids], not_available[job_ids];
-
+chan reached, align, bUpdate;
 // length of sun times
 const int l_sun = 43;
 // The start and stop times of each insolation period
@@ -48,16 +48,24 @@ const int stop_uhf[l_uhf] = {61141, 66947, 72667, 78366, 84023, 89530, 149330, 1
 int ind[job_ids] = {0,0,0,0};
 bool running[job_ids] = {false, false, false, false};
 int job_count[job_ids] = {0,0,0,0};
+int cost_rates[job_ids] = {0,0,0,0};
 
 // heuristic variables for l and x band ratios 
 int r = 0;
 const int r_l = 1;
 const int r_x = 2;
 
-const int preheat_time [job_ids] = {
+const int preheat_time[job_ids] = {
   20*60,// L1-band
   20*60,// L2-band
   0,// X-band
+  0//UHF
+};
+
+const int slewing_time[job_ids] = {
+  10*60,// L1-band
+  10*60,// L2-band
+  10*60,// X-band
   0//UHF
 };
 
@@ -76,7 +84,8 @@ int jobStopTime(const int job_id){
 }
 
 int jobPreheatTime(const int job_id){
-  return jobStartTime(job_id) - preheat_time[job_id];
+  // take slewing time into consideration
+  return jobStartTime(job_id) - preheat_time[job_id] - slewing_time[job_id];
 }
 
 void nextJob(const int job_id){
@@ -102,19 +111,11 @@ void stopJob(const int job_id){
 
 bool job_possible(const int job_id){
   if(job_id == 3) return true; // prioritize UHF
-  if(slewing) return false; // another L or xband job working
+  //if(slewing) return false; // another L or xband job working
   // heuristics
   if((job_id == 2) && (r >= r_l)) return true; // x-band
   if((job_id <2) && (r < (r_x+r_l)*r_l)) return true; // l-band
   return false;
-}
-
-void lockIfNeeded(const int job_id){
-    if ((job_att[job_id] >= 0) && (curr_att != job_att[job_id])) slewing = true; // lock only if slewing required 
-}
-
-void unlockIfNeeded(const int job_id){
-    if (job_att[job_id] >= 0) slewing = false; // unlock only if job requires slewing
 }
 
 bool isAligned(const int job_id){
@@ -123,12 +124,34 @@ bool isAligned(const int job_id){
   return false;
 }
 
+bool hasToSlewBack(const int job_id){
+  if(job_att[job_id] >=0) return true; 
+  return false;
+}
+
+void startSlewing(const int job_id){
+    slewing = true;
+    
+    slewing_start = jobStartTime(job_id) - slewing_time[job_id];
+    slewing_end = jobStartTime(job_id);
+    new_time = slewing_start;
+}
+
+void stopSlewing(const int job_id){
+    slewing = false;
+    new_time = slewing_end;
+}
+
 process Job1() {
 const int job_id = 0;
 state
+    S0,
+    S1,
+    S2,
+    S3,
     End,
     Penalty {cost'==
-costRate(job_id)},
+cost_rates[job_id]},
     Skip,
     SlewingBack,
     Check_Attitude,
@@ -145,24 +168,35 @@ commit
     Align;
 init Idle;
 trans
+    /** */
+    S0 -> S3 { sync reached?; assign stopSlewing(job_id);  },
+    /** */
+    SlewingBack -> S0 { sync bUpdate!;  },
+    /** */
+    S1 -> S2 { sync reached?; assign stopSlewing(job_id);  },
+    /** */
+    Slewing -> S1 { sync bUpdate!;  },
+    /** */
+    S2 -> Correct_Attitude { sync bUpdate!;  },
+    /** */
+    S3 -> Idle { sync bUpdate!;  },
     End -> Check_Attitude { sync bUpdate!;  },
     Check_Attitude -> Idle { guard !hasToSlewBack(job_id);  },
     Penalty -> Idle { sync not_available[job_id]?;  },
     Idle -> Skip { guard skipable(job_id); sync preHeat[job_id]?;  },
     Skip -> Penalty { sync available[job_id]?;  },
-    Start -> End { sync not_available[job_id]?; assign endExperiment(job_id);  },
-    SlewingBack -> Idle { sync reached?; assign unlockIfNeeded(job_id);  },
-    Check_Attitude -> SlewingBack { guard hasToSlewBack(job_id); sync alignTo[a_N]!;  },
-    Correct_Attitude -> Available { sync available[job_id]?; assign startExperiment(job_id);  },
-    Idle -> Align { guard exp_possible(job_id); sync preHeat[job_id]?; assign lockIfNeeded(job_id);  },
+    Start -> End { sync not_available[job_id]?; assign stopJob(job_id);  },
+    /** */
+    Check_Attitude -> SlewingBack { guard hasToSlewBack(job_id); sync align!; assign startSlewing(job_id);  },
+    Correct_Attitude -> Available { sync available[job_id]?; assign startJob(job_id);  },
+    Idle -> Align { guard job_possible(job_id); sync preHeat[job_id]?;  },
     Align -> Correct_Attitude { guard isAligned(job_id);  },
     Available -> Start { sync bUpdate!;  },
-    Slewing -> Correct_Attitude { sync reached?;  },
-    Align -> Slewing { guard !isAligned(job_id); sync alignTo[a_nfe[job_id]]!;  };
+    Align -> Slewing { guard !isAligned(job_id); sync align!; assign startSlewing(job_id);  };
 }
 
 process JobProvider1() {
-const p_id job_id=0;
+const int job_id=0;
 state
     Idle {time <= jobPreheatTime(job_ids)},
     Available {time <= jobStopTime(job_ids)},
@@ -176,7 +210,7 @@ trans
 
 process Battery(const soc_t lb, const soc_t ub) {
 load_t load = 0;
-Int old_time = 0;
+time_t old_time = 0;
 //meta int par;
 
 void update(){
@@ -262,6 +296,21 @@ init Idle;
 trans
     Idle -> Inter { guard gc == 86400; sync bUpdate!; assign last();  },
     Inter -> Lock { assign cost += (0 == 0) ? 0 : ((capacity - soc) / 0);  };
+}
+
+process ADCS() {
+
+state
+    End,
+    Slewing {time>=slewing_start},
+    Idle;
+init Idle;
+trans
+    End -> Idle { sync reached!;  },
+    /** */
+    Slewing -> End { guard time == slewing_end;  },
+    /** */
+    Idle -> Slewing { sync align?;  };
 }
 AC = AttitudeControl();
 B = Battery(safe_threshold, capacity);
