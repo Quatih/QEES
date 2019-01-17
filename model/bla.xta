@@ -1,6 +1,5 @@
 
 // Place global declarations here.
-
 clock time;
 typedef int[0, 10000000] time_t;
 typedef int[-4000, 20000] power_t;
@@ -135,7 +134,7 @@ void startSlewing(const int job_id){
     slewing_start = jobStartTime(job_id) - slewing_time[job_id];
     slewing_end = jobStartTime(job_id);
     new_time = slewing_start;
-}
+} 
 
 void stopSlewing(const int job_id){
     slewing = false;
@@ -145,6 +144,8 @@ void stopSlewing(const int job_id){
 process Job1() {
 const int job_id = 0;
 state
+    /** */
+    Preheat update,
     S0,
     S1,
     S2,
@@ -169,16 +170,14 @@ commit
 init Idle;
 trans
     /** */
+    Preheat update -> Align { sync bUpdate!;  },
+    /** */
+    Idle -> Preheat update { guard job_possible(job_id); sync preHeat[job_id]?;  },
     S0 -> S3 { sync reached?; assign stopSlewing(job_id);  },
-    /** */
     SlewingBack -> S0 { sync bUpdate!;  },
-    /** */
     S1 -> S2 { sync reached?; assign stopSlewing(job_id);  },
-    /** */
     Slewing -> S1 { sync bUpdate!;  },
-    /** */
     S2 -> Correct_Attitude { sync bUpdate!;  },
-    /** */
     S3 -> Idle { sync bUpdate!;  },
     End -> Check_Attitude { sync bUpdate!;  },
     Check_Attitude -> Idle { guard !hasToSlewBack(job_id);  },
@@ -186,10 +185,8 @@ trans
     Idle -> Skip { guard skipable(job_id); sync preHeat[job_id]?;  },
     Skip -> Penalty { sync available[job_id]?;  },
     Start -> End { sync not_available[job_id]?; assign stopJob(job_id);  },
-    /** */
     Check_Attitude -> SlewingBack { guard hasToSlewBack(job_id); sync align!; assign startSlewing(job_id);  },
     Correct_Attitude -> Available { sync available[job_id]?; assign startJob(job_id);  },
-    Idle -> Align { guard job_possible(job_id); sync preHeat[job_id]?;  },
     Align -> Correct_Attitude { guard isAligned(job_id);  },
     Available -> Start { sync bUpdate!;  },
     Align -> Slewing { guard !isAligned(job_id); sync align!; assign startSlewing(job_id);  };
@@ -307,9 +304,7 @@ state
 init Idle;
 trans
     End -> Idle { sync reached!;  },
-    /** */
     Slewing -> End { guard time == slewing_end;  },
-    /** */
     Idle -> Slewing { sync align?;  };
 }
 AC = AttitudeControl();
