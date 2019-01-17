@@ -144,8 +144,7 @@ void stopSlewing(const int job_id){
 process Job1() {
 const int job_id = 0;
 state
-    /** */
-    Preheat update,
+    Preheat_update,
     S0,
     S1,
     S2,
@@ -169,10 +168,8 @@ commit
     Align;
 init Idle;
 trans
-    /** */
-    Preheat update -> Align { sync bUpdate!;  },
-    /** */
-    Idle -> Preheat update { guard job_possible(job_id); sync preHeat[job_id]?;  },
+    Preheat_update -> Align { sync bUpdate!;  },
+    Idle -> Preheat_update { guard job_possible(job_id); sync preHeat[job_id]?;  },
     S0 -> S3 { sync reached?; assign stopSlewing(job_id);  },
     SlewingBack -> S0 { sync bUpdate!;  },
     S1 -> S2 { sync reached?; assign stopSlewing(job_id);  },

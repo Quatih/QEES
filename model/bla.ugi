@@ -1,9 +1,9 @@
 process Job1 graphinfo {
-sync Preheat update Align 1 (-28,-24);
-guard Idle Preheat update 1 (-56,-40);
-sync Idle Preheat update 1 (-56,-25);
-location Preheat update (40,208);
-locationName Preheat update(-48,24);
+sync Preheat_update Align 1 (-28,-24);
+guard Idle Preheat_update 1 (-56,-40);
+sync Idle Preheat_update 1 (-56,-25);
+location Preheat_update (40,208);
+locationName Preheat_update(-48,24);
 location S0 (296,360);
 locationName S0(0,0);
 location S1 (248,-24);
