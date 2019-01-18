@@ -18,6 +18,9 @@ const power_t max_load = 15000;
 time_t new_time = 0;
 time_t slewing_start = 0;
 time_t slewing_end = 0;
+time_t stop_time = 0;
+time_t start_time = 0;
+time_t sun_transition = 0;
 
 const int job_ids = 4; 
 // L1-Band, L2-Band, X-Band, UHF
@@ -26,12 +29,12 @@ const int no_att = 3; //default = 0, l1/l2 = 1, x = 2
 
 int curr_att = 0;
 
-bool slewing = false;
-
+bool slewed = false;
+bool insolation = false;
 const int job_att[job_ids] = {0, 0, 1, -1}; // UHF is attitude agnostic
 
-chan preHeat[job_ids], available[job_ids], not_available[job_ids], bUpdate[job_ids];
-chan reached, align;
+chan preHeat[job_ids], available[job_ids], not_available[job_ids];
+chan reached, align, bUpdate;
 // length of sun times
 const int l_sun = 43;
 // The start and stop times of each insolation period
@@ -139,22 +142,40 @@ bool hasToSlewBack(const int job_id){
   return false;
 }
 
-void startSlewing(const int job_id){
+
+void startSlewing(){
     slewing = true;
     // new_time already updated by the job provider
     slewing_start = new_time;
     slewing_end = new_time + 10*60;
 } 
 
-void stopSlewing(){
-    slewing = false;
-    new_time = slewing_end;
+void startInsolation(){
+    sun_transition = 0;
+    insolation = true;
+}
+
+void startEclipse(){
+    sun_transition = 0;
+    insolation = false;
+}
+
+void setInsolation(){
+    sun_transition = start_sun[i_sun];
+    insolation = true;
+}
+
+void setEclipse(){
+    sun_transition = stop_sun[i_sun];
+    insolation = false;
+    i_sun++;
 }
 
 process Job1() {
 const int job_id = 0;
 state
-    S3,
+    CleanUp,
+    Battery_Update,
     End,
     Penalty {cost'==
 cost_rates[job_id]},
@@ -174,15 +195,12 @@ commit
     Align;
 init Idle;
 trans
+    Battery_Update -> CleanUp { sync bUpdate[job_id]!;  },
+    CleanUp -> Idle { assign slewed = false;  },
     End -> Check_Attitude {  },
     Available -> Start {  },
-    /** */
-    SlewingBack -> S3 { sync reached?;  },
-    /** */
-    S3 -> Idle { sync bUpdate[job_id];  },
-    /** */
-    Check_Attitude -> S3 { guard !hasToSlewBack(job_id);  },
-    /** */
+    SlewingBack -> Battery_Update { sync reached?; assign stop_time = slewing_end;  },
+    Check_Attitude -> Battery_Update { guard !hasToSlewBack(job_id); assign stop_time = jobStopTime(job_id);  },
     Idle -> Align { guard job_possible(job_id); sync preHeat[job_id]?;  },
     Slewing -> Correct_Attitude { sync reached?;  },
     Penalty -> Idle { sync not_available[job_id]?;  },
@@ -204,7 +222,7 @@ state
 init Idle;
 trans
     Idle -> PreHeat { guard time == jobPreheatTime(job_id); sync preHeat[job_id]!; assign new_time = jobPreheatTime(job_id);  },
-    PreHeat -> Available { guard time == jobStartTime(job_id); sync available[job_id]!; assign new_time = jobStartTime(job_id);  },
+    PreHeat -> Available { guard time == jobStartTime(job_id); sync available[job_id]!;  },
     Available -> Idle { guard time == jobStopTime(job_id); sync not_available[job_id]!; assign nextJob(job_id);  };
 }
 
@@ -253,38 +271,19 @@ trans
 }
 
 process Sun() {
-bool updateAfterInsolationEnd = 0 ;
 
-void eclipseEnd(){
-    insolation = true;
-    new_time = eclipseEndTime();
-    if(!updateAfterInsolationEnd) sun_c++;
-}
-
-void insolationEnd(){
-    insolation = false;
-    new_time = insolationEndTime();
-    if(updateAfterInsolationEnd) sun_c++;
-}
 state
-    S0,
-    S1,
-    S2,
-    Init,
-    Eclipse {gc<=eclipseEndTime()},
-    Insolation {gc <= insolationEndTime()};
+    Insolation {time <= stop_sun[i_sun]},
+    Eclipse {time <= start_sun[i_sun]},
+    Init;
 commit
     Init;
 init Init;
 trans
-    S0 -> S2 {  },
-    S1 -> S0 {  },
-    S2 -> S1 {  },
-    Init -> Insolation { guard eclipseEndTime() > insolationEndTime(); assign insolation=true,
-updateAfterInsolationEnd=false;  },
-    Init -> Eclipse { guard eclipseEndTime() <= insolationEndTime(); assign updateAfterInsolationEnd=true;  },
-    Eclipse -> Insolation { guard gc == eclipseEndTime(); sync bUpdate!; assign eclipseEnd();  },
-    Insolation -> Eclipse { guard gc == insolationEndTime(); sync bUpdate!; assign insolationEnd();  };
+    Insolation -> Eclipse { guard time == stop_sun[i_sun]; assign setEclipse();  },
+    Init -> Insolation { guard start_sun[0] == 0; assign startInsolation();  },
+    Eclipse -> Insolation { assign setInsolation();  },
+    Init -> Eclipse { guard start_sun[0] > 0; assign startEclipse();  };
 }
 
 process Termination() {
@@ -312,9 +311,9 @@ state
     Idle;
 init Idle;
 trans
-    End -> Idle { sync reached!; assign stopSlewing();  },
+    End -> Idle { sync reached!;  },
     Slewing -> End { guard time == slewing_end;  },
-    Idle -> Slewing { select job_id : int; sync align[job_id]!; assign startSlewing(job_id);  };
+    Idle -> Slewing { sync align!; assign startSlewing();  };
 }
 AC = AttitudeControl();
 B = Battery(safe_threshold, capacity);
