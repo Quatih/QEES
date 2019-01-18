@@ -4,6 +4,17 @@ clock time;
 typedef int[0, 10000000] time_t;
 typedef int[-4000, 20000] power_t;
 typedef int[0, 149760000] charge_t;
+
+const job_load[4] = {3863, 3863, 11945, 2630};
+const slew_load = 414;
+const preheat_load = 414;
+
+const power_t bg_load = 2989;
+const battery_t max_cap = 149760000;
+battery_t battery = 130000000;
+const battery_t min_cap = 80000000;
+const power_t max_load = 15000;
+
 time_t new_time = 0;
 time_t slewing_start = 0;
 time_t slewing_end = 0;
@@ -183,16 +194,16 @@ trans
 }
 
 process JobProvider1() {
-const int job_id = 0;
+const int job_id=0;
 state
-    Idle {time <= jobPreheatTime(job_ids)},
-    Available {time <= jobStopTime(job_ids)},
-    PreHeat {time <= jobStartTime(job_ids)};
+    Idle {time <= jobPreheatTime(job_id)},
+    Available {time <= jobStopTime(job_id)},
+    PreHeat {time <= jobStartTime(job_id)};
 init Idle;
 trans
-    Idle -> PreHeat { guard time == jobPreheatTime(job_ids); sync preHeat[job_ids]!; assign new_time = jobPreheatTime(job_ids);  },
-    PreHeat -> Available { guard time == jobStartTime(job_ids); sync available[job_ids]!; assign new_time = jobStartTime(job_ids);  },
-    Available -> Idle { guard time == jobStopTime(job_ids); sync not_available[job_ids]!; assign nextJob(job_ids);  };
+    Idle -> PreHeat { guard time == jobPreheatTime(job_id); sync preHeat[job_id]!; assign new_time = jobPreheatTime(job_id);  },
+    PreHeat -> Available { guard time == jobStartTime(job_id); sync available[job_id]!; assign new_time = jobStartTime(job_id);  },
+    Available -> Idle { guard time == jobStopTime(job_id); sync not_available[job_id]!; assign nextJob(job_id);  };
 }
 
 process Battery(const soc_t lb, const soc_t ub) {
