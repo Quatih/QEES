@@ -30,8 +30,8 @@ bool slewing = false;
 
 const int job_att[job_ids] = {0, 0, 1, -1}; // UHF is attitude agnostic
 
-chan preHeat[job_ids], available[job_ids], not_available[job_ids];
-chan reached, align, bUpdate;
+chan preHeat[job_ids], available[job_ids], not_available[job_ids], bUpdate[job_ids];
+chan reached, align;
 // length of sun times
 const int l_sun = 43;
 // The start and stop times of each insolation period
@@ -154,7 +154,7 @@ void stopSlewing(){
 process Job1() {
 const int job_id = 0;
 state
-    Preheat_update,
+    S3,
     End,
     Penalty {cost'==
 cost_rates[job_id]},
@@ -174,12 +174,17 @@ commit
     Align;
 init Idle;
 trans
-    SlewingBack -> Idle { sync reached?;  },
+    End -> Check_Attitude {  },
+    Available -> Start {  },
+    /** */
+    SlewingBack -> S3 { sync reached?;  },
+    /** */
+    S3 -> Idle { sync bUpdate[job_id];  },
+    /** */
+    Check_Attitude -> S3 { guard !hasToSlewBack(job_id);  },
+    /** */
+    Idle -> Align { guard job_possible(job_id); sync preHeat[job_id]?;  },
     Slewing -> Correct_Attitude { sync reached?;  },
-    Preheat_update -> Align { sync bUpdate!;  },
-    Idle -> Preheat_update { guard job_possible(job_id); sync preHeat[job_id]?;  },
-    End -> Check_Attitude { sync bUpdate!;  },
-    Check_Attitude -> Idle { guard !hasToSlewBack(job_id);  },
     Penalty -> Idle { sync not_available[job_id]?;  },
     Idle -> Skip { guard skipable(job_id); sync preHeat[job_id]?;  },
     Skip -> Penalty { sync available[job_id]?;  },
@@ -187,7 +192,6 @@ trans
     Check_Attitude -> SlewingBack { guard hasToSlewBack(job_id); sync align[job_id]!;  },
     Correct_Attitude -> Available { sync available[job_id]?; assign startJob(job_id);  },
     Align -> Correct_Attitude { guard isAligned(job_id);  },
-    Available -> Start { sync bUpdate!;  },
     Align -> Slewing { guard !isAligned(job_id); sync align[job_id]!;  };
 }
 
@@ -308,9 +312,9 @@ state
     Idle;
 init Idle;
 trans
-    End -> Idle { sync reached!; assign StopSlewing();  },
+    End -> Idle { sync reached!; assign stopSlewing();  },
     Slewing -> End { guard time == slewing_end;  },
-    Idle -> Slewing { select job_id : int; sync align[job_id]; assign startSlewing(job_id);  };
+    Idle -> Slewing { select job_id : int; sync align[job_id]!; assign startSlewing(job_id);  };
 }
 AC = AttitudeControl();
 B = Battery(safe_threshold, capacity);
