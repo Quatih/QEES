@@ -15,6 +15,7 @@ battery_t battery = 130000000;
 const battery_t min_cap = 80000000;
 const power_t max_load = 15000;
 
+time_t stop_simulation = 65*60*60; // period of the whole current time period.
 time_t new_time = 0;
 time_t slewing_start = 0;
 time_t slewing_end = 0;
@@ -22,16 +23,15 @@ time_t stop_time = 0;
 time_t start_time = 0;
 time_t sun_transition = 0;
 
-const int job_ids = 4; 
-// L1-Band, L2-Band, X-Band, UHF
+const int job_ids = 5; 
+// L1-Band, L2-Band, X-Band, UHF, dummy
 
 const int no_att = 3; //default = 0, l1/l2 = 1, x = 2 
-
 int curr_att = 0;
 
 bool slewed = false;
 bool insolation = false;
-const int job_att[job_ids] = {0, 0, 1, -1}; // UHF is attitude agnostic
+const int job_att[job_ids] = {0, 0, 1, -1, -1}; // UHF is attitude agnostic
 
 chan preHeat[job_ids], available[job_ids], not_available[job_ids];
 chan reached, align, bUpdate;
@@ -58,10 +58,10 @@ const int l_uhf = 11;
 const time_t start_uhf[l_uhf] = {60917, 66429, 72087, 77787, 83507, 89317, 148887, 154504, 160190, 165900, 171645 };
 const time_t stop_uhf[l_uhf] = {61141, 66947, 72667, 78366, 84023, 89530, 149330, 155067, 160775, 166457, 172058 };
 
-int ind[job_ids] = {0,0,0,0};
-bool running[job_ids] = {false, false, false, false};
-int job_count[job_ids] = {0,0,0,0};
-int cost_rates[job_ids] = {0,0,0,0};
+int ind[job_ids] = {0,0,0,0,-1};
+bool running[job_ids] = {false, false, false, false, false};
+int job_count[job_ids] = {0,0,0,0,0};
+int cost_rates[job_ids] = {0,0,0,0,-1};
 
 // heuristic variables for l and x band ratios 
 int r = 0;
@@ -72,14 +72,16 @@ const int preheat_time[job_ids] = {
   20*60,// L1-band
   20*60,// L2-band
   0,// X-band
-  0//UHF
+  0,//UHF
+  0 //dummy
 };
 
 const int slewing_time[job_ids] = {
   10*60,// L1-band
   10*60,// L2-band
   10*60,// X-band
-  0//UHF
+  0,//UHF
+  0 // dummy
 };
 
 int jobStartTime(const int job_id){
@@ -87,6 +89,7 @@ int jobStartTime(const int job_id){
   if (job_id == 1) return start_l2[ind[job_id]];
   if (job_id == 2) return start_x[ind[job_id]];
   if (job_id == 3) return start_uhf[ind[job_id]];
+  if (job_id == 4) return 0;// dummy
 }
 
 int jobStopTime(const int job_id){
@@ -94,6 +97,7 @@ int jobStopTime(const int job_id){
   if (job_id == 1) return stop_l2[ind[job_id]];
   if (job_id == 2) return stop_x[ind[job_id]];
   if (job_id == 3) return stop_uhf[ind[job_id]];
+  if (job_id == 4) return 0;// dummy
 }
 
 int jobPreheatTime(const int job_id){
