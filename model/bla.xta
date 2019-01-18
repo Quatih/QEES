@@ -5,9 +5,9 @@ typedef int[0, 10000000] time_t;
 typedef int[-10000, 20000] power_t;
 typedef int[0, 149760000] battery_t;
 
-const job_load[4] = {3863, 3863, 11945, 2630};
-const slew_load = 414;
-const preheat_load = 414;
+const power_t job_load[4] = {3863, 3863, 11945, 2630};
+const power_t slew_load = 414;
+const power_t preheat_load = 414;
 
 const power_t bg_load = 2989;
 const battery_t max_cap = 149760000;
@@ -174,9 +174,7 @@ commit
     Align;
 init Idle;
 trans
-
     SlewingBack -> Idle { sync reached?;  },
-
     Slewing -> Correct_Attitude { sync reached?;  },
     Preheat_update -> Align { sync bUpdate!;  },
     Idle -> Preheat_update { guard job_possible(job_id); sync preHeat[job_id]?;  },
@@ -310,10 +308,8 @@ state
     Idle;
 init Idle;
 trans
-
     End -> Idle { sync reached!; assign StopSlewing();  },
     Slewing -> End { guard time == slewing_end;  },
-
     Idle -> Slewing { select job_id : int; sync align[job_id]; assign startSlewing(job_id);  };
 }
 AC = AttitudeControl();
