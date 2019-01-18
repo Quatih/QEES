@@ -271,7 +271,7 @@ commit
 init Init;
 trans
     Init -> Idle {  },
-    /** */
+
     Idle -> Check { select job_id : int; sync bUpdate[job_id]?; assign update(job_id);  },
     Check -> Idle { guard battery >= min_cap;  },
     Check -> Depletion { guard battery < min_cap;  };
