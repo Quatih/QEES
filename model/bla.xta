@@ -5,17 +5,18 @@ typedef int[0, 10000000] time_t;
 typedef int[-10000, 20000] power_t;
 typedef int[0, 149760000] battery_t;
 
-const power_t job_load[4] = {3863, 3863, 11945, 2630};
+
 const power_t slew_load = 414;
 const power_t preheat_load = 414;
 
 const power_t bg_load = 2989;
 const battery_t max_cap = 149760000;
-battery_t battery = 130000000;
-const battery_t min_cap = 80000000;
+battery_t battery = 119808000;
+const battery_t min_cap = 59904000;
 const power_t max_load = 15000;
 
-time_t stop_simulation = 65*60*60; // period of the whole current time period.
+
+const time_t stop_simulation = 65*60*60; // period of the whole current time period.
 time_t new_time = 0;
 time_t slewing_start = 0;
 time_t slewing_end = 0;
@@ -26,8 +27,13 @@ time_t sun_transition = 0;
 const int job_ids = 5; 
 // L1-Band, L2-Band, X-Band, UHF, dummy
 
+const power_t job_load[job_ids] = {3863, 3863, 11945, 2630, 0};
+const int preheat_job[job_ids] = {1, 1, 0, 0, 0};
+const int slew_job[job_ids] = {1, 1, 1, 0, 0};
+
 const int no_att = 3; //default = 0, l1/l2 = 1, x = 2 
 int curr_att = 0;
+const power_t sun_power_by_att[no_att] = {5700, 6100, 5700};
 
 bool slewed = false;
 bool insolation = false;
@@ -61,7 +67,9 @@ const time_t stop_uhf[l_uhf] = {61141, 66947, 72667, 78366, 84023, 89530, 149330
 int ind[job_ids] = {0,0,0,0,-1};
 bool running[job_ids] = {false, false, false, false, false};
 int job_count[job_ids] = {0,0,0,0,0};
+
 int cost_rates[job_ids] = {0,0,0,0,-1};
+
 
 // heuristic variables for l and x band ratios 
 int r = 0;
@@ -234,28 +242,66 @@ process Battery(const soc_t lb, const soc_t ub) {
 power_t load = 0;
 
 void update(const int job_id){
-    if(job_id==0){
-	load=bg_load;
-	load=load+job_load[job_id]+slew_load+preheat_load;
-    }
-    if(job_id==1){
-	load=bg_load;
-	load=load+job_load[job_id]+slew_load+preheat_load;
-    }
-    if(job_id==2){
-	load=bg_load;
-	load=load+job_load[job_id]+slew_load;
-    }
-    if(job_id==3){
-	load=bg_load;
-	load=load+job_load[job_id];
-    }
-    
+    load = bg_load;
 
-    battery -= load * (stop_time - start_time);
+    battery -= load * (old_time - new_time);
+   
+    time_t start = jojobStartTime[ind[job_id]-1];
+    time_t stop = jobStopTime[ind[job_id]-1];
+    if (old_time <= sun_transition && new_time >= sun_transition){
+        if(insolaton){
+
+            if (sun_transition >= start){
+                battery += sun_power_by_att[job_att[job_id]] * (new_time - sun_transition);//attitude of job
+            }
+            else if(sun_transition <= old_time){
+                battery += sun_power_by_att[job_att[job_id]] * (stop-start);
+                battery += sun_power_by_att[0]*(start - sun_transition);
+            }
+            else{
+                battery += sun_power_by_att[job_att[job_id]] * (stop-start);
+                battery += sun_power_by_att[0]*(start - sun_transition);
+            }
+        }
+        else{
+            if (sun_transition >= start){
+                battery += sun_power_by_att[job_att[job_id]] * (sun_transition - start);
+                battery += sun_power_by_att[0] * (sun_transition - start);
+            }
+            else{
+
+            }
+        }
+    }
+    else{
+
+    }
+
+
+    if(job_id == 0){
+	  load = + job_load[job_id];
+    }
+    if(job_id == 1){
+	  load = job_load[job_id];
+    }
+    if(job_id == 2){
+	  load = job_load[job_id];
+    }
+    if(job_id == 3){
+	  load = job_load[job_id];
+    }
+    if(job_id == 4){
+      load = 0;
+    }
+    if(slewed) battery -= slew_load*slewing_time[job_id]*2;
+    battery -= preheat_load*preheat_time[job_id];
+    time_t job_interval = stop -start;
+    battery -= load*job_interval;
     if (battery > max_cap){
         battery = max_cap;
     }
+    stop_time = new_time;
+   
 
     if (load > max_load) battery = 0; //deadlock
 }
@@ -271,7 +317,6 @@ commit
 init Init;
 trans
     Init -> Idle {  },
-
     Idle -> Check { select job_id : int; sync bUpdate[job_id]?; assign update(job_id);  },
     Check -> Idle { guard battery >= min_cap;  },
     Check -> Depletion { guard battery < min_cap;  };
@@ -293,21 +338,15 @@ trans
     Init -> Eclipse { guard start_sun[0] > 0; assign startEclipse();  };
 }
 
-process Termination() {
-void last(){
-	new_time = 86400 ;
-}
+process End_simulation() {
 state
-    Idle {gc <= 86400},
-    Inter,
+    Running {time <= stop_simulation},
     Lock;
 commit
-    Inter,
     Lock;
-init Idle;
+init Running;
 trans
-    Idle -> Inter { guard gc == 86400; sync bUpdate!; assign last();  },
-    Inter -> Lock { assign cost += (0 == 0) ? 0 : ((capacity - soc) / 0);  };
+    Running -> Lock { guard time == stop_simulation; sync bUpdate!; assign new_time = stop_simulation;  };
 }
 
 process ADCS() {

@@ -108,18 +108,15 @@ trans Init Eclipse 1 (60,-100);
 guard Init Eclipse 1 (-44,-92);
 assign Init Eclipse 1 (-44,-76);
 }
-process Termination graphinfo {
-location Idle (40,80);
-locationName Idle(-10,-30);
-invariant Idle(-10,15);
-location Inter (190,80);
-locationName Inter(-10,-30);
-location Lock (190,230);
-locationName Lock(18,-14);
-guard Idle Inter 1 (-60,-30);
-sync Idle Inter 1 (-60,-15);
-assign Idle Inter 1 (-60,0);
-assign Inter Lock 1 (10,-19);
+process End_simulation graphinfo {
+location Running (-48,80);
+locationName Running(-24,-32);
+invariant Running(-96,24);
+location Lock (216,80);
+locationName Lock(-10,-30);
+guard Running Lock 1 (-91,-56);
+sync Running Lock 1 (-92,-39);
+assign Running Lock 1 (-92,-24);
 }
 process ADCS graphinfo {
 location End (-416,-96);
