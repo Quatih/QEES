@@ -248,62 +248,42 @@ void update(const int job_id){
    
     time_t start = jojobStartTime[ind[job_id]-1];
     time_t stop = jobStopTime[ind[job_id]-1];
-    if (old_time <= sun_transition && new_time >= sun_transition){
-        if(insolaton){
-
-            if (sun_transition >= start){
-                battery += sun_power_by_att[job_att[job_id]] * (new_time - sun_transition);//attitude of job
-            }
-            else if(sun_transition <= old_time){
-                battery += sun_power_by_att[job_att[job_id]] * (stop-start);
-                battery += sun_power_by_att[0]*(start - sun_transition);
-            }
-            else{
-                battery += sun_power_by_att[job_att[job_id]] * (stop-start);
-                battery += sun_power_by_att[0]*(start - sun_transition);
-            }
+    if(insolaton){
+        if (sun_transition >= start){
+            battery += sun_power_by_att[job_att[job_id]] * (stop - sun_transition);
+        }
+        else if(sun_transition <= old_time){
+            battery += sun_power_by_att[job_att[job_id]] * (stop-start);
+            battery += sun_power_by_att[0]*(start - old_time);
         }
         else{
-            if (sun_transition >= start){
-                battery += sun_power_by_att[job_att[job_id]] * (sun_transition - start);
-                battery += sun_power_by_att[0] * (sun_transition - start);
-            }
-            else{
-
-            }
+            battery += sun_power_by_att[job_att[job_id]] * (stop-start);
+            battery += sun_power_by_att[0]*(start - sun_transition);
         }
+        battery += sun_power_by_att[0] * (new_time - stop);
     }
     else{
-
+        if (sun_transition >= start){
+            battery += sun_power_by_att[job_att[job_id]] * (sun_transition - start);
+            battery += sun_power_by_att[0] * (sun_transition - start);
+        }
+        else if(sun_transition <= old_time){
+            //no sun over the period
+        }
+        else{
+            battery += sun_power_by_att[0]*(sun_transition - old_time);
+        }
     }
 
-
-    if(job_id == 0){
-	  load = + job_load[job_id];
-    }
-    if(job_id == 1){
-	  load = job_load[job_id];
-    }
-    if(job_id == 2){
-	  load = job_load[job_id];
-    }
-    if(job_id == 3){
-	  load = job_load[job_id];
-    }
-    if(job_id == 4){
-      load = 0;
-    }
+    battery -= job_load[job_id]*job_interval;
     if(slewed) battery -= slew_load*slewing_time[job_id]*2;
+
     battery -= preheat_load*preheat_time[job_id];
-    time_t job_interval = stop -start;
-    battery -= load*job_interval;
+    
     if (battery > max_cap){
         battery = max_cap;
     }
     stop_time = new_time;
-   
-
-    if (load > max_load) battery = 0; //deadlock
 }
 state
     Init,
