@@ -130,13 +130,12 @@ bool hasToSlewBack(const int job_id){
 
 void startSlewing(const int job_id){
     slewing = true;
-    
-    slewing_start = jobStartTime(job_id) - slewing_time[job_id];
-    slewing_end = jobStartTime(job_id);
-    new_time = slewing_start;
+    // new_time already updated by either stopJob() or from the job provider
+    slewing_start = new_time;
+    slewing_end = new_time + 10*60;
 } 
 
-void stopSlewing(const int job_id){
+void stopSlewing(){
     slewing = false;
     new_time = slewing_end;
 }
@@ -145,10 +144,6 @@ process Job1() {
 const int job_id = 0;
 state
     Preheat_update,
-    S0,
-    S1,
-    S2,
-    S3,
     End,
     Penalty {cost'==
 cost_rates[job_id]},
@@ -168,29 +163,27 @@ commit
     Align;
 init Idle;
 trans
+
+    SlewingBack -> Idle { sync reached?;  },
+
+    Slewing -> Correct_Attitude { sync reached?;  },
     Preheat_update -> Align { sync bUpdate!;  },
     Idle -> Preheat_update { guard job_possible(job_id); sync preHeat[job_id]?;  },
-    S0 -> S3 { sync reached?; assign stopSlewing(job_id);  },
-    SlewingBack -> S0 { sync bUpdate!;  },
-    S1 -> S2 { sync reached?; assign stopSlewing(job_id);  },
-    Slewing -> S1 { sync bUpdate!;  },
-    S2 -> Correct_Attitude { sync bUpdate!;  },
-    S3 -> Idle { sync bUpdate!;  },
     End -> Check_Attitude { sync bUpdate!;  },
     Check_Attitude -> Idle { guard !hasToSlewBack(job_id);  },
     Penalty -> Idle { sync not_available[job_id]?;  },
     Idle -> Skip { guard skipable(job_id); sync preHeat[job_id]?;  },
     Skip -> Penalty { sync available[job_id]?;  },
     Start -> End { sync not_available[job_id]?; assign stopJob(job_id);  },
-    Check_Attitude -> SlewingBack { guard hasToSlewBack(job_id); sync align!; assign startSlewing(job_id);  },
+    Check_Attitude -> SlewingBack { guard hasToSlewBack(job_id); sync align[job_id]!;  },
     Correct_Attitude -> Available { sync available[job_id]?; assign startJob(job_id);  },
     Align -> Correct_Attitude { guard isAligned(job_id);  },
     Available -> Start { sync bUpdate!;  },
-    Align -> Slewing { guard !isAligned(job_id); sync align!; assign startSlewing(job_id);  };
+    Align -> Slewing { guard !isAligned(job_id); sync align[job_id]!;  };
 }
 
 process JobProvider1() {
-const int job_id=0;
+const int job_id = 0;
 state
     Idle {time <= jobPreheatTime(job_ids)},
     Available {time <= jobStopTime(job_ids)},
@@ -261,6 +254,9 @@ void insolationEnd(){
     if(updateAfterInsolationEnd) sun_c++;
 }
 state
+    S0,
+    S1,
+    S2,
     Init,
     Eclipse {gc<=eclipseEndTime()},
     Insolation {gc <= insolationEndTime()};
@@ -268,6 +264,9 @@ commit
     Init;
 init Init;
 trans
+    S0 -> S2 {  },
+    S1 -> S0 {  },
+    S2 -> S1 {  },
     Init -> Insolation { guard eclipseEndTime() > insolationEndTime(); assign insolation=true,
 updateAfterInsolationEnd=false;  },
     Init -> Eclipse { guard eclipseEndTime() <= insolationEndTime(); assign updateAfterInsolationEnd=true;  },
@@ -300,9 +299,11 @@ state
     Idle;
 init Idle;
 trans
-    End -> Idle { sync reached!;  },
+
+    End -> Idle { sync reached!; assign StopSlewing();  },
     Slewing -> End { guard time == slewing_end;  },
-    Idle -> Slewing { sync align?;  };
+
+    Idle -> Slewing { select job_id : int; sync align[job_id]; assign startSlewing(job_id);  };
 }
 AC = AttitudeControl();
 B = Battery(safe_threshold, capacity);
