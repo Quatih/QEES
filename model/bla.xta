@@ -231,31 +231,33 @@ trans
 }
 
 process Battery(const soc_t lb, const soc_t ub) {
-load_t load = 0;
-time_t old_time = 0;
-//meta int par;
+power_t load = 0;
 
-void update(){
-    soc -= load * (new_time - old_time);
-    if (soc > ub){    //align to bound
-        soc = ub;
+void update(const int job_id){
+    if(job_id==0){
+	load=bg_load;
+	load=load+job_load[job_id]+slew_load+preheat_load;
     }
-    old_time = new_time;
-    load = default_bg_load;
-    //par = 0;	
-    for(job_id:p_id){
-        load += pa[job_id] ? power_p[job_id] : 0;
-        //par += pa[job_id] ? 1 : 0;
+    if(job_id==1){
+	load=bg_load;
+	load=load+job_load[job_id]+slew_load+preheat_load;
     }
-    //if (par > 1) soc = 0;
-    load += slewing ? power_slewing : 0;
-    load -= insolation ? power_g[a] : 0;
-    if (load > max_load) soc = 0; //deadlock
-}
+    if(job_id==2){
+	load=bg_load;
+	load=load+job_load[job_id]+slew_load;
+    }
+    if(job_id==3){
+	load=bg_load;
+	load=load+job_load[job_id];
+    }
+    
 
+    battery -= load * (stop_time - start_time);
+    if (battery > max_cap){
+        battery = max_cap;
+    }
 
-bool depleted(){
-    return soc <= lb;
+    if (load > max_load) battery = 0; //deadlock
 }
 state
     Init,
@@ -268,10 +270,11 @@ commit
     Depletion;
 init Init;
 trans
-    Init -> Idle { assign update();  },
-    Idle -> Check { sync bUpdate?; assign update();  },
-    Check -> Idle { guard soc > lb;  },
-    Check -> Depletion { guard soc <= lb;  };
+    Init -> Idle {  },
+    /** */
+    Idle -> Check { select job_id : int; sync bUpdate[job_id]?; assign update(job_id);  },
+    Check -> Idle { guard battery >= min_cap;  },
+    Check -> Depletion { guard battery < min_cap;  };
 }
 
 process Sun() {
