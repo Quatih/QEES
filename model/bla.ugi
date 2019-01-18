@@ -79,11 +79,12 @@ location Depletion (304,232);
 locationName Depletion(-10,-30);
 location Idle (40,232);
 locationName Idle(-10,-30);
-assign Init Idle 1 (-28,-24);
-sync Idle Check 1 (-53,-92);
-assign Idle Check 1 (68,-72);
-guard Check Idle 1 (-20,-24);
-guard Check Depletion 1 (-24,-24);
+trans Idle Check 1 (-4,-64);
+select Idle Check 1 (-36,-112);
+sync Idle Check 1 (-36,-128);
+assign Idle Check 1 (-36,-96);
+guard Check Idle 1 (-52,8);
+guard Check Depletion 1 (-24,8);
 }
 process Sun graphinfo {
 location Insolation (-480,152);
