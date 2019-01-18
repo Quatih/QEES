@@ -39,8 +39,9 @@ bool slewed = false;
 bool insolation = false;
 const int job_att[job_ids] = {0, 0, 1, -1, -1}; // UHF is attitude agnostic
 
-chan preHeat[job_ids], available[job_ids], not_available[job_ids];
-chan reached, align, bUpdate;
+chan preHeat[job_ids], available[job_ids], not_available[job_ids], bUpdate[job_ids];
+
+chan reached, align;
 // length of sun times
 const int l_sun = 43;
 // The start and stop times of each insolation period
@@ -156,7 +157,7 @@ bool hasToSlewBack(const int job_id){
 
 
 void startSlewing(){
-    slewing = true;
+    slewed = true;
     // new_time already updated by the job provider
     slewing_start = new_time;
     slewing_end = new_time + 10*60;
@@ -183,7 +184,7 @@ void setEclipse(){
     i_sun++;
 }
 
-process Job1() {
+process Job0() {
 const int job_id = 0;
 state
     CleanUp,
@@ -219,13 +220,13 @@ trans
     Idle -> Skip { guard skipable(job_id); sync preHeat[job_id]?;  },
     Skip -> Penalty { sync available[job_id]?;  },
     Start -> End { sync not_available[job_id]?; assign stopJob(job_id);  },
-    Check_Attitude -> SlewingBack { guard hasToSlewBack(job_id); sync align[job_id]!;  },
+    Check_Attitude -> SlewingBack { guard hasToSlewBack(job_id); sync align!;  },
     Correct_Attitude -> Available { sync available[job_id]?; assign startJob(job_id);  },
     Align -> Correct_Attitude { guard isAligned(job_id);  },
-    Align -> Slewing { guard !isAligned(job_id); sync align[job_id]!;  };
+    Align -> Slewing { guard !isAligned(job_id); sync align!;  };
 }
 
-process JobProvider1() {
+process JobProvider0() {
 const int job_id=0;
 state
     Idle {time <= jobPreheatTime(job_id)},
@@ -238,17 +239,19 @@ trans
     Available -> Idle { guard time == jobStopTime(job_id); sync not_available[job_id]!; assign nextJob(job_id);  };
 }
 
-process Battery(const soc_t lb, const soc_t ub) {
+process Battery() {
 power_t load = 0;
 
+time_t start , stop;
+time_t old_time = 0;
 void update(const int job_id){
     load = bg_load;
 
     battery -= load * (old_time - new_time);
    
-    time_t start = jojobStartTime[ind[job_id]-1];
-    time_t stop = jobStopTime[ind[job_id]-1];
-    if(insolaton){
+    start = jobStartTime(ind[job_id]-1);
+    stop = jobStopTime(ind[job_id]-1);
+    if(insolation){
         if (sun_transition >= start){
             battery += sun_power_by_att[job_att[job_id]] * (stop - sun_transition);
         }
@@ -275,11 +278,11 @@ void update(const int job_id){
         }
     }
 
-    battery -= job_load[job_id]*job_interval;
+    battery -= job_load[job_id]*(stop - start);
     if(slewed) battery -= slew_load*slewing_time[job_id]*2;
 
     battery -= preheat_load*preheat_time[job_id];
-    
+        
     if (battery > max_cap){
         battery = max_cap;
     }
@@ -319,6 +322,7 @@ trans
 }
 
 process End_simulation() {
+
 state
     Running {time <= stop_simulation},
     Lock;
@@ -326,14 +330,14 @@ commit
     Lock;
 init Running;
 trans
-    Running -> Lock { guard time == stop_simulation; sync bUpdate!; assign new_time = stop_simulation;  };
+    Running -> Lock { guard time == stop_simulation; sync bUpdate[4]!; assign new_time = stop_simulation;  };
 }
 
 process ADCS() {
 
 state
     End,
-    Slewing {time>=slewing_start},
+    Slewing {time<=slewing_end},
     Idle;
 init Idle;
 trans
@@ -341,24 +345,11 @@ trans
     Slewing -> End { guard time == slewing_end;  },
     Idle -> Slewing { sync align!; assign startSlewing();  };
 }
-AC = AttitudeControl();
-B = Battery(safe_threshold, capacity);
-//OC = OrbitCounter();
-E0 = Experiment0();
-E1 = Experiment1();
-E2 = Experiment2();
-E3 = Experiment3();
-E4 = Experiment4();
-E5 = Experiment5();
-E6 = Experiment6();
-EP0 = Exp_Provider0();
-EP1 = Exp_Provider1();
-EP2 = Exp_Provider2();
-EP3 = Exp_Provider3();
-EP4 = Exp_Provider4();
-EP5 = Exp_Provider5();
-EP6 = Exp_Provider6();
-T = Termination();
+Jb0 = Job0();
+JbP0 = JobProvider0();
+B = Battery();
+End_S = End_simulation();
+ADC = ADCS();
 
 // List one or more processes to be composed into a system.
-system E0, E1, E2, E3, E4, E5, E6, EP0, EP1, EP2, EP3, EP4, EP5, EP6, Sun, AC, B, T;
+system Jb0, JbP0, B, End_S, ADC;

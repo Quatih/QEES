@@ -1,4 +1,4 @@
-process Job1 graphinfo {
+process Job0 graphinfo {
 location CleanUp (8,360);
 locationName CleanUp(-24,16);
 location Battery_Update (288,360);
@@ -51,7 +51,7 @@ guard Align Correct_Attitude 1 (-48,0);
 guard Align Slewing 1 (-112,-4);
 sync Align Slewing 1 (-112,-20);
 }
-process JobProvider1 graphinfo {
+process JobProvider0 graphinfo {
 location Idle (40,80);
 locationName Idle(-10,-30);
 invariant Idle(-208,-16);
@@ -123,7 +123,7 @@ location End (-416,-96);
 locationName End(-8,16);
 location Slewing (-344,-216);
 locationName Slewing(-10,-30);
-invariant Slewing(0,16);
+invariant Slewing(24,-8);
 location Idle (-488,-216);
 locationName Idle(-10,-38);
 sync End Idle 1 (-60,-4);
