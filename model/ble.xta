@@ -187,7 +187,6 @@ void setEclipse(){
 process Job0() {
 const int job_id = 0;
 state
-
     start,
     CleanUp,
     Battery_Update,
@@ -414,7 +413,8 @@ power_t load = 0;
 time_t start , stop;
 time_t old_time = 0;
 void update(const int job_id){
-    load = bg_load;
+    
+	/*load = bg_load;
 
     battery -= load * (old_time - new_time);
    
@@ -456,13 +456,12 @@ void update(const int job_id){
         battery = max_cap;
     }
     stop_time = new_time;
+*/
 }
 state
-
     Init,
     Check,
     Depletion,
-
     Idle;
 commit
     Init,
