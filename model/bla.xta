@@ -187,8 +187,6 @@ void setEclipse(){
 process Job0() {
 const int job_id = 0;
 state
-
-    start,
     CleanUp,
     Battery_Update,
     End,
@@ -204,14 +202,12 @@ cost_rates[job_id]},
     Slewing,
     Correct_Attitude;
 commit
-    start,
     End,
     Check_Attitude,
     Available,
     Align;
-init start;
+init Idle;
 trans
-    start -> Idle {  },
     Battery_Update -> CleanUp { sync bUpdate[job_id]!;  },
     CleanUp -> Idle { assign slewed = false;  },
     End -> Check_Attitude {  },
@@ -231,171 +227,6 @@ trans
 }
 
 process JobProvider0() {
-const int job_id=0;
-state
-    Idle {time <= jobPreheatTime(job_id)},
-    Available {time <= jobStopTime(job_id)},
-    PreHeat {time <= jobStartTime(job_id)};
-init Idle;
-trans
-    Idle -> PreHeat { guard time == jobPreheatTime(job_id); sync preHeat[job_id]!; assign new_time = jobPreheatTime(job_id);  },
-    PreHeat -> Available { guard time == jobStartTime(job_id); sync available[job_id]!;  },
-    Available -> Idle { guard time == jobStopTime(job_id); sync not_available[job_id]!; assign nextJob(job_id);  };
-}
-
-process Job1() {
-const int job_id = 0;
-state
-    CleanUp,
-    Battery_Update,
-    End,
-    Penalty {cost'==
-cost_rates[job_id]},
-    Skip,
-    SlewingBack,
-    Check_Attitude,
-    Available,
-    Idle,
-    Align,
-    Start,
-    Slewing,
-    Correct_Attitude;
-commit
-    End,
-    Check_Attitude,
-    Available,
-    Align;
-init Idle;
-trans
-    Battery_Update -> CleanUp { sync bUpdate[job_id]!;  },
-    CleanUp -> Idle { assign slewed = false;  },
-    End -> Check_Attitude {  },
-    Available -> Start {  },
-    SlewingBack -> Battery_Update { sync reached?; assign stop_time = slewing_end;  },
-    Check_Attitude -> Battery_Update { guard !hasToSlewBack(job_id); assign stop_time = jobStopTime(job_id);  },
-    Idle -> Align { guard job_possible(job_id); sync preHeat[job_id]?;  },
-    Slewing -> Correct_Attitude { sync reached?;  },
-    Penalty -> Idle { sync not_available[job_id]?;  },
-    Idle -> Skip { guard skipable(job_id); sync preHeat[job_id]?;  },
-    Skip -> Penalty { sync available[job_id]?;  },
-    Start -> End { sync not_available[job_id]?; assign stopJob(job_id);  },
-    Check_Attitude -> SlewingBack { guard hasToSlewBack(job_id); sync align!;  },
-    Correct_Attitude -> Available { sync available[job_id]?; assign startJob(job_id);  },
-    Align -> Correct_Attitude { guard isAligned(job_id);  },
-    Align -> Slewing { guard !isAligned(job_id); sync align!;  };
-}
-
-process JobProvider1() {
-const int job_id=0;
-state
-    Idle {time <= jobPreheatTime(job_id)},
-    Available {time <= jobStopTime(job_id)},
-    PreHeat {time <= jobStartTime(job_id)};
-init Idle;
-trans
-    Idle -> PreHeat { guard time == jobPreheatTime(job_id); sync preHeat[job_id]!; assign new_time = jobPreheatTime(job_id);  },
-    PreHeat -> Available { guard time == jobStartTime(job_id); sync available[job_id]!;  },
-    Available -> Idle { guard time == jobStopTime(job_id); sync not_available[job_id]!; assign nextJob(job_id);  };
-}
-
-process Job2() {
-const int job_id = 0;
-state
-    CleanUp,
-    Battery_Update,
-    End,
-    Penalty {cost'==
-cost_rates[job_id]},
-    Skip,
-    SlewingBack,
-    Check_Attitude,
-    Available,
-    Idle,
-    Align,
-    Start,
-    Slewing,
-    Correct_Attitude;
-commit
-    End,
-    Check_Attitude,
-    Available,
-    Align;
-init Idle;
-trans
-    Battery_Update -> CleanUp { sync bUpdate[job_id]!;  },
-    CleanUp -> Idle { assign slewed = false;  },
-    End -> Check_Attitude {  },
-    Available -> Start {  },
-    SlewingBack -> Battery_Update { sync reached?; assign stop_time = slewing_end;  },
-    Check_Attitude -> Battery_Update { guard !hasToSlewBack(job_id); assign stop_time = jobStopTime(job_id);  },
-    Idle -> Align { guard job_possible(job_id); sync preHeat[job_id]?;  },
-    Slewing -> Correct_Attitude { sync reached?;  },
-    Penalty -> Idle { sync not_available[job_id]?;  },
-    Idle -> Skip { guard skipable(job_id); sync preHeat[job_id]?;  },
-    Skip -> Penalty { sync available[job_id]?;  },
-    Start -> End { sync not_available[job_id]?; assign stopJob(job_id);  },
-    Check_Attitude -> SlewingBack { guard hasToSlewBack(job_id); sync align!;  },
-    Correct_Attitude -> Available { sync available[job_id]?; assign startJob(job_id);  },
-    Align -> Correct_Attitude { guard isAligned(job_id);  },
-    Align -> Slewing { guard !isAligned(job_id); sync align!;  };
-}
-
-process JobProvider2() {
-const int job_id=0;
-state
-    Idle {time <= jobPreheatTime(job_id)},
-    Available {time <= jobStopTime(job_id)},
-    PreHeat {time <= jobStartTime(job_id)};
-init Idle;
-trans
-    Idle -> PreHeat { guard time == jobPreheatTime(job_id); sync preHeat[job_id]!; assign new_time = jobPreheatTime(job_id);  },
-    PreHeat -> Available { guard time == jobStartTime(job_id); sync available[job_id]!;  },
-    Available -> Idle { guard time == jobStopTime(job_id); sync not_available[job_id]!; assign nextJob(job_id);  };
-}
-
-process Job3() {
-const int job_id = 0;
-state
-    CleanUp,
-    Battery_Update,
-    End,
-    Penalty {cost'==
-cost_rates[job_id]},
-    Skip,
-    SlewingBack,
-    Check_Attitude,
-    Available,
-    Idle,
-    Align,
-    Start,
-    Slewing,
-    Correct_Attitude;
-commit
-    End,
-    Check_Attitude,
-    Available,
-    Align;
-init Idle;
-trans
-    Battery_Update -> CleanUp { sync bUpdate[job_id]!;  },
-    CleanUp -> Idle { assign slewed = false;  },
-    End -> Check_Attitude {  },
-    Available -> Start {  },
-    SlewingBack -> Battery_Update { sync reached?; assign stop_time = slewing_end;  },
-    Check_Attitude -> Battery_Update { guard !hasToSlewBack(job_id); assign stop_time = jobStopTime(job_id);  },
-    Idle -> Align { guard job_possible(job_id); sync preHeat[job_id]?;  },
-    Slewing -> Correct_Attitude { sync reached?;  },
-    Penalty -> Idle { sync not_available[job_id]?;  },
-    Idle -> Skip { guard skipable(job_id); sync preHeat[job_id]?;  },
-    Skip -> Penalty { sync available[job_id]?;  },
-    Start -> End { sync not_available[job_id]?; assign stopJob(job_id);  },
-    Check_Attitude -> SlewingBack { guard hasToSlewBack(job_id); sync align!;  },
-    Correct_Attitude -> Available { sync available[job_id]?; assign startJob(job_id);  },
-    Align -> Correct_Attitude { guard isAligned(job_id);  },
-    Align -> Slewing { guard !isAligned(job_id); sync align!;  };
-}
-
-process JobProvider3() {
 const int job_id=0;
 state
     Idle {time <= jobPreheatTime(job_id)},
@@ -458,11 +289,9 @@ void update(const int job_id){
     stop_time = new_time;
 }
 state
-
     Init,
     Check,
     Depletion,
-
     Idle;
 commit
     Init,
@@ -472,8 +301,8 @@ init Init;
 trans
     Init -> Idle {  },
     Idle -> Check { select job_id : int; sync bUpdate[job_id]?; assign update(job_id);  },
-    Check -> Idle { guard battery > min_cap;  },
-    Check -> Depletion { guard battery <= min_cap;  };
+    Check -> Idle { guard battery >= min_cap;  },
+    Check -> Depletion { guard battery < min_cap;  };
 }
 
 process Sun() {
@@ -518,15 +347,9 @@ trans
 }
 Jb0 = Job0();
 JbP0 = JobProvider0();
-Jb1 = Job1();
-JbP1 = JobProvider1();
-Jb2 = Job2();
-JbP2 = JobProvider2();
-Jb3 = Job3();
-JbP3 = JobProvider3();
 B = Battery();
 End_S = End_simulation();
 ADC = ADCS();
 
 // List one or more processes to be composed into a system.
-system Jb0, JbP0, Jb1, JbP1, Jb2, JbP2, Jb3, JbP3, B, End_S, ADC;
+system Jb0, JbP0, B, End_S, ADC;
