@@ -37,7 +37,7 @@ const power_t sun_power_by_att[no_att] = {5700, 6100, 5700};
 
 bool slewed = false;
 bool insolation = false;
-const int job_att[job_ids] = {0, 0, 1, -1, -1}; // UHF is attitude agnostic
+const int job_att[job_ids] = {1, 1, 2, -1, -1}; // UHF is attitude agnostic
 
 chan preHeat[job_ids], available[job_ids], not_available[job_ids], bUpdate[job_ids];
 
@@ -524,4 +524,4 @@ End_S = End_simulation();
 ADC = ADCS();
 
 // List one or more processes to be composed into a system.
-system Jb0, JbP0, Jb1, JbP1, Jb2, JbP2, Jb3, JbP3, B, End_S, ADC;
+system Jb1, JbP1;

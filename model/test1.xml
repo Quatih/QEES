@@ -1,0 +1,189 @@
+<?xml version="1.0" encoding="utf-8"?><!DOCTYPE nta PUBLIC '-//Uppaal Team//DTD Flat System 1.1//EN' 'http://www.it.uu.se/research/group/darts/uppaal/flat-1_1.dtd'><nta><declaration>clock time;
+typedef int[0, 1000000] time_t;
+typedef int[-10000, 20000] power_t;
+typedef int[0, 149760000] battery_t;
+
+
+const power_t slew_load = 414;
+const power_t preheat_load = 414;
+
+const power_t bg_load = 2989;
+const battery_t max_cap = 149760000;
+battery_t battery = 119808000;
+const battery_t min_cap = 59904000;
+const power_t max_load = 15000;
+
+bool a = false;
+
+const time_t stop_simulation = 65*60*60; // period of the whole current time period.
+time_t new_time = 0;
+time_t slewing_start = 0;
+time_t slewing_end = 0;
+time_t stop_time = 0;
+time_t start_time = 0;
+time_t sun_transition = 0;
+
+const int job_ids = 5; 
+// L1-Band, L2-Band, X-Band, UHF, dummy
+
+const power_t job_load[job_ids] = {3863, 3863, 11945, 2630, 0};
+const int preheat_job[job_ids] = {1, 1, 0, 0, 0};
+const int slew_job[job_ids] = {1, 1, 1, 0, 0};
+
+const int no_att = 3; //default = 0, l1/l2 = 1, x = 2 
+int curr_att = 0;
+const power_t sun_power_by_att[no_att] = {5700, 6100, 5700};
+
+bool slewed = false;
+bool insolation = false;
+const int job_att[job_ids] = {1, 1, 2, -1, -1}; // UHF is attitude agnostic
+
+chan preHeat[job_ids], available[job_ids], not_available[job_ids], bUpdate[job_ids];
+
+chan reached, align;
+// length of sun times
+const int l_sun = 43;
+// The start and stop times of each insolation period
+const time_t start_sun[l_sun] = {1151, 6655, 12159, 17663, 23168, 28672, 34176, 39680, 45184, 50688, 56192, 61696, 67200, 72705, 78209, 83713, 89217, 94721, 100226, 105730, 111234, 116738, 122242, 127747, 133251, 138755, 144260, 149764, 155268, 160773, 166277, 171781, 177286, 182790, 188295, 193799, 199304, 204808, 210313, 215818, 221322, 226827, 232332 };
+const time_t stop_sun[l_sun] = {4620, 10127, 15633, 21140, 26646, 32153, 37660, 43167, 48673, 54180, 59687, 65194, 70701, 76208, 81715, 87222, 92729, 98236, 103743, 109250, 114757, 120265, 125772, 131279, 136786, 142294, 147801, 153309, 158816, 164324, 169831, 175339, 180846, 186354, 191862, 197369, 202877, 208385, 213893, 219401, 224909, 230417, 235925 };
+int i_sun = 0;
+
+const int l_x = 24;
+const time_t start_x[l_x] = {6837, 23916, 29751, 60592, 65340, 66202, 70973, 71954, 77737, 83484, 89215, 95054, 106372, 112047, 148622, 153366, 154327, 159207, 160108, 165873, 171604, 177362, 194425, 200321 };
+const time_t stop_x[l_x] = {7354, 24504, 30099, 61025, 65751, 66803, 71549, 72532, 78291, 84075, 89800, 95322, 106842, 112605, 149188, 153954, 154924, 159559, 160664, 166444, 172208, 177852, 195021, 200556 };
+
+const int l_l1 = 38;
+const time_t start_l1[l_l1] = {5367, 11204, 16951, 22674, 28430, 34307, 40374, 46421, 52289, 58049, 63772, 69513, 75349, 81376, 87459, 93369, 99149, 104876, 110608, 116414, 122392, 128487, 134437, 140238, 145971, 151696, 157475, 163402, 169496, 175495, 181325, 187070, 192792, 198552, 204435, 210504, 216541, 222402 };
+const time_t stop_l1[l_l1] = {10937, 16774, 22521, 28244, 34000, 39877, 45944, 51991, 57859, 63619, 69342, 75083, 80919, 86946, 93029, 98939, 104719, 110446, 116178, 121984, 127962, 134057, 140007, 145808, 151541, 157266, 163045, 168972, 175066, 181065, 186895, 192640, 198362, 204122, 210005, 216074, 222111, 227972 };
+
+const int l_l2 = 39;
+const time_t start_l2[l_l2] = {2707, 8521, 14261, 19986, 25756, 31664, 37749, 43768, 49614, 55366, 61090, 66845, 72711, 78765, 84817, 90695, 96462, 102187, 107928, 113757, 119768, 125851, 131771, 137558, 143288, 149021, 154821, 160786, 166875, 172835, 178644, 184381, 190108, 195884, 201800, 207883, 213889, 219727, 225477 };
+const time_t stop_l2[l_l2] = {8277, 14091, 19831, 25556, 31326, 37234, 43319, 49338, 55184, 60936, 66660, 72415, 78281, 84335, 90387, 96265, 102032, 107757, 113498, 119327, 125338, 131421, 137341, 143128, 148858, 154591, 160391, 166356, 172445, 178405, 184214, 189951, 195678, 201454, 207370, 213453, 219459, 225297, 231047 };
+
+const int l_uhf = 11;
+const time_t start_uhf[l_uhf] = {60917, 66429, 72087, 77787, 83507, 89317, 148887, 154504, 160190, 165900, 171645 };
+const time_t stop_uhf[l_uhf] = {61141, 66947, 72667, 78366, 84023, 89530, 149330, 155067, 160775, 166457, 172058 };
+
+int ind[job_ids] = {0,0,0,0,-1};
+bool running[job_ids] = {false, false, false, false, false};
+int job_count[job_ids] = {0,0,0,0,0};
+
+int cost_rates[job_ids] = {0,0,0,0,-1};
+
+
+// heuristic variables for l and x band ratios 
+int r = 0;
+const int r_l = 1;
+const int r_x = 2;
+
+const int preheat_time[job_ids] = {
+  20*60,// L1-band
+  20*60,// L2-band
+  0,// X-band
+  0,//UHF
+  0 //dummy
+};
+
+const int slewing_time[job_ids] = {
+  10*60,// L1-band
+  10*60,// L2-band
+  10*60,// X-band
+  0,//UHF
+  0 // dummy
+};
+
+int jobStartTime(const int job_id){
+  if (job_id == 0) return start_l1[ind[job_id]];
+  if (job_id == 1) return start_l2[ind[job_id]];
+  if (job_id == 2) return start_x[ind[job_id]];
+  if (job_id == 3) return start_uhf[ind[job_id]];
+  if (job_id == 4) return 0;// dummy
+}
+
+int jobStopTime(const int job_id){
+  if (job_id == 0) return stop_l1[ind[job_id]];
+  if (job_id == 1) return stop_l2[ind[job_id]];
+  if (job_id == 2) return stop_x[ind[job_id]];
+  if (job_id == 3) return stop_uhf[ind[job_id]];
+  if (job_id == 4) return 0;// dummy
+}
+
+int jobPreheatTime(const int job_id){
+  // take slewing time into consideration
+  return jobStartTime(job_id) - preheat_time[job_id] - slewing_time[job_id];
+}
+
+void nextJob(const int job_id){
+  new_time=jobStopTime(job_id);
+  ind[job_id] = ind[job_id] + 1;
+}
+
+bool skipable(const int job_id){
+  if (job_id == 3) return false; // force UHF to execute if able
+  return true;
+}
+
+void startJob(const int job_id){
+  running[job_id] = true;
+  if (job_id &lt; 2) r = r + r_x;//L band
+  if (job_id == 2) r = r - r_l; //X-band
+}
+
+void stopJob(const int job_id){
+  running[job_id] = false;
+  job_count[job_id] = job_count[job_id] + 1;
+}
+
+bool job_possible(const int job_id){
+  if(job_id == 3) return true; // prioritize UHF
+  //if(slewing) return false; // another L or xband job working
+  // heuristics
+  if((job_id == 2) &amp;&amp; (r &gt;= r_l)) return true; // x-band
+  if((job_id &lt;2) &amp;&amp; (r &lt; (r_x+r_l)*r_l)) return true; // l-band
+  return false;
+}
+
+bool isAligned(const int job_id){
+  if (job_att[job_id] == -1) return true;
+  if (job_att[job_id] == curr_att) return true;
+  return false;
+}
+
+bool hasToSlewBack(const int job_id){
+  if(job_att[job_id] &gt;=0) return true; 
+  return false;
+}
+
+
+void startSlewing(){
+    slewed = true;
+    // new_time already updated by the job provider
+    slewing_start = new_time;
+    slewing_end = new_time + 10*60;
+} 
+
+void startInsolation(){
+    sun_transition = 0;
+    insolation = true;
+}
+
+void startEclipse(){
+    sun_transition = 0;
+    insolation = false;
+}
+
+void setInsolation(){
+    sun_transition = start_sun[i_sun];
+    insolation = true;
+}
+
+void setEclipse(){
+    sun_transition = stop_sun[i_sun];
+    insolation = false;
+    i_sun++;
+}</declaration><template><name>Job0</name><declaration>const int job_id = 0;</declaration><location id="id0" x="8" y="360"><name x="-16" y="376">CleanUp</name></location><location id="id1" x="288" y="360"><name x="264" y="376">EndSlew</name></location><location id="id2" x="616" y="80"><name x="606" y="50">End</name><committed/></location><location id="id3" x="-144" y="72"><name x="-168" y="40">Penalty</name><label kind="invariant" x="-154" y="87">cost'==
+cost_rates[job_id]</label></location><location id="id4" x="-144" y="208"><name x="-154" y="178">Skip</name></location><location id="id5" x="616" y="360"><name x="632" y="314">SlewingBack</name></location><location id="id6" x="616" y="208"><name x="640" y="192">Check_Attitude</name><committed/></location><location id="id7" x="456" y="208"><name x="446" y="178">Available</name></location><location id="id8" x="8" y="208"><name x="-2" y="178">Idle</name></location><location id="id9" x="192" y="208"><name x="182" y="178">Align</name><committed/></location><location id="id10" x="456" y="80"><name x="446" y="50">Start</name></location><location id="id11" x="192" y="72"><name x="144" y="40">Slewing</name></location><location id="id12" x="320" y="208"><name x="310" y="178">Correct_Attitude</name></location><init ref="id8"/><transition><source ref="id1"/><target ref="id0"/></transition><transition><source ref="id0"/><target ref="id8"/><label kind="assignment" x="16" y="288">a = true</label></transition><transition><source ref="id2"/><target ref="id6"/></transition><transition><source ref="id7"/><target ref="id10"/></transition><transition><source ref="id5"/><target ref="id1"/><label kind="assignment" x="392" y="376">stop_time = slewing_end</label></transition><transition><source ref="id6"/><target ref="id1"/><label kind="guard" x="344" y="304">!hasToSlewBack(job_id)</label><label kind="assignment" x="344" y="288">stop_time = jobStopTime(job_id)</label><nail x="528" y="288"/><nail x="336" y="288"/></transition><transition><source ref="id8"/><target ref="id9"/><label kind="guard" x="32" y="168">job_possible(job_id)</label><label kind="synchronisation" x="32" y="184">preHeat[job_id]?</label></transition><transition><source ref="id11"/><target ref="id12"/></transition><transition><source ref="id3"/><target ref="id8"/><label kind="synchronisation" x="-96" y="88">not_available[job_id]?</label></transition><transition><source ref="id8"/><target ref="id4"/><label kind="guard" x="-112" y="216">skipable(job_id)</label><label kind="synchronisation" x="-112" y="232">preHeat[job_id]?</label></transition><transition><source ref="id4"/><target ref="id3"/><label kind="synchronisation" x="-256" y="136">available[job_id]?</label></transition><transition><source ref="id10"/><target ref="id2"/><label kind="synchronisation" x="480" y="56">not_available[job_id]?</label><label kind="assignment" x="480" y="40">stopJob(job_id)</label></transition><transition><source ref="id6"/><target ref="id5"/><label kind="guard" x="624" y="248">hasToSlewBack(job_id)</label></transition><transition><source ref="id12"/><target ref="id7"/><label kind="synchronisation" x="344" y="208">available[job_id]?</label><label kind="assignment" x="344" y="223">startJob(job_id)</label></transition><transition><source ref="id9"/><target ref="id12"/><label kind="guard" x="208" y="208">isAligned(job_id)</label></transition><transition><source ref="id9"/><target ref="id11"/><label kind="guard" x="80" y="136">!isAligned(job_id)</label></transition></template><template><name>JobProvider0</name><declaration>const int job_id=0;</declaration><location id="id13" x="40" y="80"><name x="30" y="50">Idle</name><label kind="invariant" x="-168" y="64">time &lt;= jobPreheatTime(job_id)</label></location><location id="id14" x="190" y="80"><name x="180" y="50">Available</name><label kind="invariant" x="208" y="64">time &lt;= jobStopTime(job_id)</label></location><location id="id15" x="190" y="230"><name x="224" y="216">PreHeat</name><label kind="invariant" x="180" y="245">time &lt;= jobStartTime(job_id)</label></location><init ref="id13"/><transition><source ref="id13"/><target ref="id15"/><label kind="guard" x="-128" y="128">time == jobPreheatTime(job_id)</label><label kind="synchronisation" x="-128" y="144">preHeat[job_id]!</label><label kind="assignment" x="-128" y="160">new_time = jobPreheatTime(job_id)</label></transition><transition><source ref="id15"/><target ref="id14"/><label kind="guard" x="224" y="112">time == jobStartTime(job_id)</label><label kind="synchronisation" x="224" y="128">available[job_id]!</label></transition><transition><source ref="id14"/><target ref="id13"/><label kind="guard" x="40" y="-16">time == jobStopTime(job_id)</label><label kind="synchronisation" x="56" y="0">not_available[job_id]!</label><label kind="assignment" x="80" y="16">nextJob(job_id)</label></transition></template><system>Jb0 = Job0();
+JbP0 = JobProvider0();
+
+// List one or more processes to be composed into a system.
+system Jb0, JbP0;</system></nta>
