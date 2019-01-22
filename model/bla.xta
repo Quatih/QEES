@@ -39,7 +39,7 @@ bool slewed = false;
 bool insolation = false;
 const int job_att[job_ids] = {1, 1, 2, -1, -1}; // UHF is attitude agnostic
 
-chan preHeat[job_ids], available[job_ids], not_available[job_ids], bUpdate[job_ids];
+chan preHeat[4], available[4], not_available[4], bUpdate[4];
 
 chan reached, align;
 // length of sun times
@@ -50,27 +50,45 @@ const time_t stop_sun[l_sun] = {4620, 10127, 15633, 21140, 26646, 32153, 37660, 
 int i_sun = 0;
 
 const int l_x = 24;
-const time_t start_x[l_x] = {6837, 23916, 29751, 60592, 65340, 66202, 70973, 71954, 77737, 83484, 89215, 95054, 106372, 112047, 148622, 153366, 154327, 159207, 160108, 165873, 171604, 177362, 194425, 200321 };
-const time_t stop_x[l_x] = {7354, 24504, 30099, 61025, 65751, 66803, 71549, 72532, 78291, 84075, 89800, 95322, 106842, 112605, 149188, 153954, 154924, 159559, 160664, 166444, 172208, 177852, 195021, 200556 };
+//const time_t start_x[l_x] = {6837, 23916, 29751, 60592, 65340, 66202, 70973, 71954, 77737, 83484, 89215, 95054, 106372, 112047, 148622, 153366, 154327, 159207, 160108, 165873, 171604, 177362, 194425, 200321 };
+//const time_t stop_x[l_x] = {7354, 24504, 30099, 61025, 65751, 66803, 71549, 72532, 78291, 84075, 89800, 95322, 106842, 112605, 149188, 153954, 154924, 159559, 160664, 166444, 172208, 177852, 195021, 200556 };
 
 const int l_l1 = 38;
-const time_t start_l1[l_l1] = {5367, 11204, 16951, 22674, 28430, 34307, 40374, 46421, 52289, 58049, 63772, 69513, 75349, 81376, 87459, 93369, 99149, 104876, 110608, 116414, 122392, 128487, 134437, 140238, 145971, 151696, 157475, 163402, 169496, 175495, 181325, 187070, 192792, 198552, 204435, 210504, 216541, 222402 };
-const time_t stop_l1[l_l1] = {10937, 16774, 22521, 28244, 34000, 39877, 45944, 51991, 57859, 63619, 69342, 75083, 80919, 86946, 93029, 98939, 104719, 110446, 116178, 121984, 127962, 134057, 140007, 145808, 151541, 157266, 163045, 168972, 175066, 181065, 186895, 192640, 198362, 204122, 210005, 216074, 222111, 227972 };
+//const time_t start_l1[l_l1] = {5367, 11204, 16951, 22674, 28430, 34307, 40374, 46421, 52289, 58049, 63772, 69513, 75349, 81376, 87459, 93369, 99149, 104876, 110608, 116414, 122392, 128487, 134437, 140238, 145971, 151696, 157475, 163402, 169496, 175495, 181325, 187070, 192792, 198552, 204435, 210504, 216541, 222402 };
+//const time_t stop_l1[l_l1] = {10937, 16774, 22521, 28244, 34000, 39877, 45944, 51991, 57859, 63619, 69342, 75083, 80919, 86946, 93029, 98939, 104719, 110446, 116178, 121984, 127962, 134057, 140007, 145808, 151541, 157266, 163045, 168972, 175066, 181065, 186895, 192640, 198362, 204122, 210005, 216074, 222111, 227972 };
 
 const int l_l2 = 39;
-const time_t start_l2[l_l2] = {2707, 8521, 14261, 19986, 25756, 31664, 37749, 43768, 49614, 55366, 61090, 66845, 72711, 78765, 84817, 90695, 96462, 102187, 107928, 113757, 119768, 125851, 131771, 137558, 143288, 149021, 154821, 160786, 166875, 172835, 178644, 184381, 190108, 195884, 201800, 207883, 213889, 219727, 225477 };
-const time_t stop_l2[l_l2] = {8277, 14091, 19831, 25556, 31326, 37234, 43319, 49338, 55184, 60936, 66660, 72415, 78281, 84335, 90387, 96265, 102032, 107757, 113498, 119327, 125338, 131421, 137341, 143128, 148858, 154591, 160391, 166356, 172445, 178405, 184214, 189951, 195678, 201454, 207370, 213453, 219459, 225297, 231047 };
+//const time_t start_l2[l_l2] = {2707, 8521, 14261, 19986, 25756, 31664, 37749, 43768, 49614, 55366, 61090, 66845, 72711, 78765, 84817, 90695, 96462, 102187, 107928, 113757, 119768, 125851, 131771, 137558, 143288, 149021, 154821, 160786, 166875, 172835, 178644, 184381, 190108, 195884, 201800, 207883, 213889, 219727, 225477 };
+//const time_t stop_l2[l_l2] = {8277, 14091, 19831, 25556, 31326, 37234, 43319, 49338, 55184, 60936, 66660, 72415, 78281, 84335, 90387, 96265, 102032, 107757, 113498, 119327, 125338, 131421, 137341, 143128, 148858, 154591, 160391, 166356, 172445, 178405, 184214, 189951, 195678, 201454, 207370, 213453, 219459, 225297, 231047 };
 
 const int l_uhf = 11;
-const time_t start_uhf[l_uhf] = {60917, 66429, 72087, 77787, 83507, 89317, 148887, 154504, 160190, 165900, 171645 };
-const time_t stop_uhf[l_uhf] = {61141, 66947, 72667, 78366, 84023, 89530, 149330, 155067, 160775, 166457, 172058 };
+//const time_t start_uhf[l_uhf] = {60917, 66429, 72087, 77787, 83507, 89317, 148887, 154504, 160190, 165900, 171645 };
+//const time_t stop_uhf[l_uhf] = {61141, 66947, 72667, 78366, 84023, 89530, 149330, 155067, 160775, 166457, 172058 };
 
 int ind[job_ids] = {0,0,0,0,-1};
+const int offsets[job_ids] = {0, 38, 77, 101};
 bool running[job_ids] = {false, false, false, false, false};
 int job_count[job_ids] = {0,0,0,0,0};
 
 int cost_rates[job_ids] = {0,0,0,0,-1};
-
+const time_t start_times[112] = 
+{
+5367, 11204, 16951, 22674, 28430, 34307, 40374, 46421, 52289, 58049, 63772, 69513, 75349, 81376, 87459, 93369, 99149, 104876, 110608, 116414, 122392, 128487, 134437, 140238, 145971, 151696, 157475, 163402, 169496, 175495, 181325, 187070, 192792, 198552, 204435, 210504, 216541, 222402,
+2707, 8521, 14261, 19986, 25756, 31664, 37749, 43768, 49614, 55366, 61090, 66845, 72711, 78765, 84817, 90695, 96462, 102187, 107928, 113757, 119768, 125851, 131771, 137558, 143288, 149021, 154821, 160786, 166875, 172835, 178644, 184381, 190108, 195884, 201800, 207883, 213889, 219727, 225477,
+6837, 23916, 29751, 60592, 65340, 66202, 70973, 71954, 77737, 83484, 89215, 95054, 106372, 112047, 148622, 153366, 154327, 159207, 160108, 165873, 171604, 177362, 194425, 200321,
+60917, 66429, 72087, 77787, 83507, 89317, 148887, 154504, 160190, 165900, 171645,
+}
+const time_t stop_times[112] = 
+{
+5367, 11204, 16951, 22674, 28430, 34307, 40374, 46421, 52289, 58049, 63772, 69513, 75349, 81376, 87459, 93369, 99149, 104876, 110608, 116414, 122392, 128487, 134437, 140238, 145971, 151696, 157475, 163402, 169496, 175495, 181325, 187070, 192792, 198552, 204435, 210504, 216541, 222402,
+8277, 14091, 19831, 25556, 31326, 37234, 43319, 49338, 55184, 60936, 66660, 72415, 78281, 84335, 90387, 96265, 102032, 107757, 113498, 119327, 125338, 131421, 137341, 143128, 148858, 154591, 160391, 166356, 172445, 178405, 184214, 189951, 195678, 201454, 207370, 213453, 219459, 225297, 231047,
+7354, 24504, 30099, 61025, 65751, 66803, 71549, 72532, 78291, 84075, 89800, 95322, 106842, 112605, 149188, 153954, 154924, 159559, 160664, 166444, 172208, 177852, 195021, 200556,
+61141, 66947, 72667, 78366, 84023, 89530, 149330, 155067, 160775, 166457, 172058
+}
+// 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 
+// 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 
+// 78, 79, 80, 81, 82, 83, 84, 85, 86, 87, 88, 89, 90, 91, 92, 93, 94, 95, 96, 97, 98, 99, 100, 101, 102,
+// 103, 104, 105, 106, 107, 108, 109, 110, 111
 
 // heuristic variables for l and x band ratios 
 int r = 0;
@@ -94,19 +112,19 @@ const int slewing_time[job_ids] = {
 };
 
 int jobStartTime(const int job_id){
-  if (job_id == 0) return start_l1[ind[job_id]];
-  if (job_id == 1) return start_l2[ind[job_id]];
-  if (job_id == 2) return start_x[ind[job_id]];
-  if (job_id == 3) return start_uhf[ind[job_id]];
-  if (job_id == 4) return 0;// dummy
+//   if (job_id == 0) return start_l1[ind[job_id]];
+//   if (job_id == 1) return start_l2[ind[job_id]];
+//   if (job_id == 2) return start_x[ind[job_id]];
+//   if (job_id == 3) return start_uhf[ind[job_id]];
+    return start_times[ind[job_id] + offsets[job_id]];
 }
 
 int jobStopTime(const int job_id){
-  if (job_id == 0) return stop_l1[ind[job_id]];
-  if (job_id == 1) return stop_l2[ind[job_id]];
-  if (job_id == 2) return stop_x[ind[job_id]];
-  if (job_id == 3) return stop_uhf[ind[job_id]];
-  if (job_id == 4) return 0;// dummy
+//   if (job_id == 0) return stop_l1[ind[job_id]];
+//   if (job_id == 1) return stop_l2[ind[job_id]];
+//   if (job_id == 2) return stop_x[ind[job_id]];
+//   if (job_id == 3) return stop_uhf[ind[job_id]];
+    return stop_times[ind[job_id] + offsets[job_id]];
 }
 
 int jobPreheatTime(const int job_id){
@@ -115,7 +133,7 @@ int jobPreheatTime(const int job_id){
 }
 
 void nextJob(const int job_id){
-  new_time=jobStopTime(job_id);
+  new_time = jobStopTime(job_id);
   ind[job_id] = ind[job_id] + 1;
 }
 
@@ -223,20 +241,25 @@ trans
     Check_Attitude -> SlewingBack { guard hasToSlewBack(job_id); sync align!;  },
     Correct_Attitude -> Available { sync available[job_id]?; assign startJob(job_id);  },
     Align -> Correct_Attitude { guard isAligned(job_id);  },
-    Align -> Slewing { guard !isAligned(job_id); sync align!;  };
+    Align -> Slewing { guard !isAligned(job_id);  };
 }
 
 process JobProvider0() {
 const int job_id=0;
 state
+    Wait,
     Idle {time <= jobPreheatTime(job_id)},
-    Available {time <= jobStopTime(job_id)},
+    Available {time<=jobStopTime(job_id)},
     PreHeat {time <= jobStartTime(job_id)};
+commit
+    Wait;
 init Idle;
 trans
+    Wait -> Wait { guard time > jobPreheatTime(job_id); assign nextJob(job_id);  },
+    Wait -> Idle {  },
+    Available -> Wait { guard time == jobStopTime(job_id); sync not_available[job_id]!; assign nextJob(job_id);  },
     Idle -> PreHeat { guard time == jobPreheatTime(job_id); sync preHeat[job_id]!; assign new_time = jobPreheatTime(job_id);  },
-    PreHeat -> Available { guard time == jobStartTime(job_id); sync available[job_id]!;  },
-    Available -> Idle { guard time == jobStopTime(job_id); sync not_available[job_id]!; assign nextJob(job_id);  };
+    PreHeat -> Available { guard time == jobStartTime(job_id); sync available[job_id]!; assign stop = jobStopTime(job_id);  };
 }
 
 process Job1() {
@@ -508,7 +531,7 @@ init Idle;
 trans
     End -> Idle { sync reached!;  },
     Slewing -> End { guard time == slewing_end;  },
-    Idle -> Slewing { sync align!; assign startSlewing();  };
+    Idle -> Slewing { sync align?; assign startSlewing();  };
 }
 Jb0 = Job0();
 JbP0 = JobProvider0();
@@ -524,4 +547,4 @@ End_S = End_simulation();
 ADC = ADCS();
 
 // List one or more processes to be composed into a system.
-system Jb1, JbP1;
+system Jb0, JbP0, ADC;
