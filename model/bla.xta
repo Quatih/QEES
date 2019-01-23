@@ -237,14 +237,14 @@ trans
     Available -> Start {  },
     SlewingBack -> EndSlew { sync reached?; assign stop_time = slewing_end;  },
     Check_Attitude -> EndSlew { guard !hasToSlewBack(job_id); assign stop_time = jobStopTime(job_id);  },
-    Idle -> Align { guard job_possible(job_id); sync preHeat[job_id]?; assign running[job_id] = true; },
+    Idle -> Align { guard job_possible(job_id); sync preHeat[job_id]?; assign running[job_id] = true;  },
     Slewing -> Correct_Attitude { sync reached?;  },
     Penalty -> Idle { sync not_available[job_id]?;  },
     Idle -> Skip { guard skipable(job_id); sync preHeat[job_id]?;  },
     Skip -> Penalty { sync available[job_id]?;  },
     Start -> End { sync not_available[job_id]?; assign stopJob(job_id);  },
     Check_Attitude -> SlewingBack { guard hasToSlewBack(job_id); sync align!;  },
-    Correct_Attitude -> Available { sync available[job_id]?; assign startJob(job_id); },
+    Correct_Attitude -> Available { sync available[job_id]?; assign startJob(job_id);  },
     Align -> Correct_Attitude { guard isAligned(job_id);  },
     Align -> Slewing { guard !isAligned(job_id); sync align!;  };
 }
@@ -297,14 +297,14 @@ trans
     Available -> Start {  },
     SlewingBack -> EndSlew { sync reached?; assign stop_time = slewing_end;  },
     Check_Attitude -> EndSlew { guard !hasToSlewBack(job_id); assign stop_time = jobStopTime(job_id);  },
-    Idle -> Align { guard job_possible(job_id); sync preHeat[job_id]?; assign running[job_id] = true; },
+    Idle -> Align { guard job_possible(job_id); sync preHeat[job_id]?; assign running[job_id] = true;  },
     Slewing -> Correct_Attitude { sync reached?;  },
     Penalty -> Idle { sync not_available[job_id]?;  },
     Idle -> Skip { guard skipable(job_id); sync preHeat[job_id]?;  },
     Skip -> Penalty { sync available[job_id]?;  },
     Start -> End { sync not_available[job_id]?; assign stopJob(job_id);  },
     Check_Attitude -> SlewingBack { guard hasToSlewBack(job_id); sync align!;  },
-    Correct_Attitude -> Available { sync available[job_id]?; assign startJob(job_id); },
+    Correct_Attitude -> Available { sync available[job_id]?; assign startJob(job_id);  },
     Align -> Correct_Attitude { guard isAligned(job_id);  },
     Align -> Slewing { guard !isAligned(job_id); sync align!;  };
 }
@@ -320,9 +320,11 @@ state
 init Idle;
 trans
     Wait -> End { guard offsets[job_id] == end[job_id];  },
-    Wait -> Wait { guard time > jobPreheatTime(job_id) && !slewed && offsets[job_id] < end[job_id]; assign nextJob(job_id);  },
+    Wait -> Wait { guard time > jobPreheatTime(job_id) && 
+!slewed && 
+offsets[job_id] < end[job_id]; assign nextJob(job_id);  },
     Wait -> Idle { guard !slewed && offsets[job_id] < end[job_id];  },
-    Available -> Wait { guard time == jobStopTime(job_id); sync not_available[job_id]!; assign nextJob(job_id); assign nextJob(job_id) },
+    Available -> Wait { guard time == jobStopTime(job_id); sync not_available[job_id]!; assign nextJob(job_id);  },
     Idle -> PreHeat { guard time == jobPreheatTime(job_id); sync preHeat[job_id]!; assign new_time = jobPreheatTime(job_id), stop = jobStopTime(job_id);  },
     PreHeat -> Available { guard time == jobStartTime(job_id); sync available[job_id]!; assign stop = jobStopTime(job_id);  };
 }
@@ -357,14 +359,14 @@ trans
     Available -> Start {  },
     SlewingBack -> EndSlew { sync reached?; assign stop_time = slewing_end;  },
     Check_Attitude -> EndSlew { guard !hasToSlewBack(job_id); assign stop_time = jobStopTime(job_id);  },
-    Idle -> Align { guard job_possible(job_id); sync preHeat[job_id]?; assign running[job_id] = true; },
+    Idle -> Align { guard job_possible(job_id); sync preHeat[job_id]?; assign running[job_id] = true;  },
     Slewing -> Correct_Attitude { sync reached?;  },
     Penalty -> Idle { sync not_available[job_id]?;  },
     Idle -> Skip { guard skipable(job_id); sync preHeat[job_id]?;  },
     Skip -> Penalty { sync available[job_id]?;  },
     Start -> End { sync not_available[job_id]?; assign stopJob(job_id);  },
     Check_Attitude -> SlewingBack { guard hasToSlewBack(job_id); sync align!;  },
-    Correct_Attitude -> Available { sync available[job_id]?; assign startJob(job_id); },
+    Correct_Attitude -> Available { sync available[job_id]?; assign startJob(job_id);  },
     Align -> Correct_Attitude { guard isAligned(job_id);  },
     Align -> Slewing { guard !isAligned(job_id); sync align!;  };
 }
@@ -382,7 +384,7 @@ trans
     Wait -> End { guard offsets[job_id] == end[job_id];  },
     Wait -> Wait { guard time > jobPreheatTime(job_id) && !slewed && offsets[job_id] < end[job_id]; assign nextJob(job_id);  },
     Wait -> Idle { guard !slewed && offsets[job_id] < end[job_id];  },
-    Available -> Wait { guard time == jobStopTime(job_id); sync not_available[job_id]!; assign nextJob(job_id); assign nextJob(job_id);  },
+    Available -> Wait { guard time == jobStopTime(job_id); sync not_available[job_id]!; assign nextJob(job_id);  },
     Idle -> PreHeat { guard time == jobPreheatTime(job_id); sync preHeat[job_id]!; assign new_time = jobPreheatTime(job_id), stop = jobStopTime(job_id);  },
     PreHeat -> Available { guard time == jobStartTime(job_id); sync available[job_id]!; assign stop = jobStopTime(job_id);  };
 }
@@ -417,14 +419,14 @@ trans
     Available -> Start {  },
     SlewingBack -> EndSlew { sync reached?; assign stop_time = slewing_end;  },
     Check_Attitude -> EndSlew { guard !hasToSlewBack(job_id); assign stop_time = jobStopTime(job_id);  },
-    Idle -> Align { guard job_possible(job_id); sync preHeat[job_id]?; assign running[job_id] = true; },
+    Idle -> Align { guard job_possible(job_id); sync preHeat[job_id]?; assign running[job_id] = true;  },
     Slewing -> Correct_Attitude { sync reached?;  },
     Penalty -> Idle { sync not_available[job_id]?;  },
     Idle -> Skip { guard skipable(job_id); sync preHeat[job_id]?;  },
     Skip -> Penalty { sync available[job_id]?;  },
     Start -> End { sync not_available[job_id]?; assign stopJob(job_id);  },
     Check_Attitude -> SlewingBack { guard hasToSlewBack(job_id); sync align!;  },
-    Correct_Attitude -> Available { sync available[job_id]?; assign startJob(job_id); },
+    Correct_Attitude -> Available { sync available[job_id]?; assign startJob(job_id);  },
     Align -> Correct_Attitude { guard isAligned(job_id);  },
     Align -> Slewing { guard !isAligned(job_id); sync align!;  };
 }
@@ -440,7 +442,7 @@ state
 init Idle;
 trans
     Wait -> End { guard offsets[job_id] == end[job_id];  },
-    Wait -> Wait { guard time > jobPreheatTime(job_id) && !slewed && offsets[job_id] < end[job_id]; assign nextJob(job_id); },
+    Wait -> Wait { guard time > jobPreheatTime(job_id) && !slewed && offsets[job_id] < end[job_id]; assign nextJob(job_id);  },
     Wait -> Idle { guard !slewed && offsets[job_id] < end[job_id];  },
     Available -> Wait { guard time == jobStopTime(job_id); sync not_available[job_id]!; assign nextJob(job_id);  },
     Idle -> PreHeat { guard time == jobPreheatTime(job_id); sync preHeat[job_id]!; assign new_time = jobPreheatTime(job_id), stop = jobStopTime(job_id);  },
@@ -515,7 +517,6 @@ void update(const id_t job_id){
 
   
 }
-
 state
     Init,
     Check,
@@ -527,7 +528,7 @@ commit
     Depletion;
 init Init;
 trans
-    Idle -> Check { select job_id : id_t; sync bUpdate[job_id]?; },
+    Idle -> Check { select job_id : id_t; sync bUpdate[job_id]?;  },
     Init -> Idle {  },
     Check -> Idle { guard battery > min_cap;  },
     Check -> Depletion { guard battery <= min_cap;  };
