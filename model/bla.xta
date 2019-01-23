@@ -2,8 +2,8 @@
 // Place global declarations here.
 clock time;
 typedef int[0, 10000000] time_t;
-typedef int[-10000, 20000] power_t;
-typedef int[0, 149760000] battery_t;
+typedef int[-100000, 200000] power_t;
+typedef int[0, 6000000000] battery_t;
 
 
 const power_t slew_load = 414;
@@ -12,9 +12,9 @@ const power_t preheat_load = 414;
 const power_t bg_load = 2989;
 const battery_t max_cap = 149760000;
 battery_t battery = 119808000;
+
 const battery_t min_cap = 59904000;
 const power_t max_load = 15000;
-time_t stop = 0;
 
 const time_t stop_simulation = 65*60*60; // period of the whole current time period.
 time_t new_time = 0;
@@ -34,13 +34,15 @@ const power_t job_load[job_ids] = {3863, 3863, 11945, 2630, 0};
 const int preheat_job[job_ids] = {1, 1, 0, 0, 0};
 const int slew_job[job_ids] = {1, 1, 1, 0, 0};
 
-const int no_att = 3; //default = 0, l1/l2 = 1, x = 2 
+const int no_att = 3; //default = 0, l1/l2 = 1, x = 2
+typedef int[0, no_att-1] att_t;
+const att_t job_att[job_ids] = {1, 1, 2, 0, 0}; // UHF is attitude agnostic
+
 int curr_att = 0;
-const power_t sun_power_by_att[no_att] = {5700, 6100, 5700};
+const power_t sun_power_by_att[att_t] = {5700, 6100, 5700};
 
 bool slewed = false;
 bool insolation = false;
-const int job_att[job_ids] = {1, 1, 2, 0, 0}; // UHF is attitude agnostic
 
 chan preHeat[job_ids], available[job_ids], not_available[job_ids], bUpdate[job_ids];
 
@@ -74,7 +76,7 @@ ind_t end[job_ids] = { 37, 76, 100, 111, 0};
 bool running[job_ids] = {false, false, false, false, false};
 int job_count[job_ids] = {0,0,0,0,0};
 
-int cost_rates[job_ids] = {0,0,0,0,-1};
+int cost_rates[job_ids] = {2,2,20,100,-1};
 const time_t start_times[112] = 
 {
 5367, 11204, 16951, 22674, 28430, 34307, 40374, 46421, 52289, 58049, 63772, 69513, 75349, 81376, 87459, 93369, 99149, 104876, 110608, 116414, 122392, 128487, 134437, 140238, 145971, 151696, 157475, 163402, 169496, 175495, 181325, 187070, 192792, 198552, 204435, 210504, 216541, 222402,
@@ -99,7 +101,7 @@ int r = 0;
 const int r_l = 1;
 const int r_x = 2;
 
-const int preheat_time[job_ids] = {
+const time_t preheat_time[job_ids] = {
   20*60,// L1-band
   20*60,// L2-band
   0,// X-band
@@ -107,7 +109,7 @@ const int preheat_time[job_ids] = {
   0 //dummy
 };
 
-const int slewing_time[job_ids] = {
+const time_t slewing_time[job_ids] = {
   10*60,// L1-band
   10*60,// L2-band
   10*60,// X-band
@@ -141,8 +143,11 @@ void nextJob(const id_t job_id){
   offsets[job_id]++;
 }
 
-bool skipable(const id_t job_id){
+bool skipable(const id_t job_id){ 
+
   if (job_id == 3) return false; // force UHF to execute if able
+  // force at 95 % battery
+//  if (battery >= (142272000 )) return false;
   return true;
 }
 
@@ -153,16 +158,17 @@ void startJob(const id_t job_id){
 }
 
 void stopJob(const id_t job_id){
-  running[job_id] = false;
+ // running[job_id] = false;
   job_count[job_id] = job_count[job_id] + 1;
 }
 
 bool job_possible(const id_t job_id){
-  if(job_id == 3) return true; // prioritize UHF
   // heuristics
   for (id:id_t){
       if(running[id]) return false;
   }
+  if(job_id == 3) return true; // prioritize UHF
+
   if((job_id == 2) && (r >= r_l)) return true; // x-band
   if((job_id <2) && (r < (r_x+r_l)*r_l)) return true; // l-band
   return false;
@@ -228,6 +234,8 @@ cost_rates[job_id]},
     Slewing,
     Correct_Attitude;
 commit
+    CleanUp,
+    EndSlew,
     End,
     Check_Attitude,
     Available,
@@ -235,11 +243,12 @@ commit
 init Idle;
 trans
     EndSlew -> CleanUp { sync bUpdate[job_id]!;  },
-    CleanUp -> Idle { assign slewed = false;  },
+    CleanUp -> Idle { assign slewed = false,
+running[job_id] = false;  },
     End -> Check_Attitude {  },
     Available -> Start {  },
     SlewingBack -> EndSlew { sync reached?; assign stop_time = slewing_end;  },
-    Check_Attitude -> EndSlew { guard !hasToSlewBack(job_id); assign stop_time = jobStopTime(job_id);  },
+    Check_Attitude -> EndSlew { guard !hasToSlewBack(job_id); assign stop_time = new_time;  },
     Idle -> Align { guard job_possible(job_id); sync preHeat[job_id]?; assign running[job_id] = true;  },
     Slewing -> Correct_Attitude { sync reached?;  },
     Penalty -> Idle { sync not_available[job_id]?;  },
@@ -264,14 +273,14 @@ init Idle;
 trans
     Wait -> End { guard offsets[job_id] == end[job_id];  },
     Wait -> Wait { guard time > jobPreheatTime(job_id) && 
-!slewed && 
+!running[job_id] && 
 offsets[job_id] < end[job_id]; assign nextJob(job_id);  },
-    Wait -> Idle { guard !slewed && 
+    Wait -> Idle { guard !running[job_id] && 
 offsets[job_id] < end[job_id];  },
-    Available -> Wait { guard time == jobStopTime(job_id); sync not_available[job_id]!; assign nextJob(job_id);  },
-    Idle -> PreHeat { guard time == jobPreheatTime(job_id); sync preHeat[job_id]!; assign new_time = jobPreheatTime(job_id), 
-stop = jobStopTime(job_id);  },
-    PreHeat -> Available { guard time == jobStartTime(job_id); sync available[job_id]!; assign stop = jobStopTime(job_id);  };
+    Available -> Wait { guard time == jobStopTime(job_id); sync not_available[job_id]!; assign nextJob(job_id),
+new_time = jobStopTime(job_id);  },
+    Idle -> PreHeat { guard time == jobPreheatTime(job_id); sync preHeat[job_id]!; assign new_time = jobPreheatTime(job_id);  },
+    PreHeat -> Available { guard time == jobStartTime(job_id); sync available[job_id]!;  };
 }
 
 process Job1() {
@@ -292,6 +301,8 @@ cost_rates[job_id]},
     Slewing,
     Correct_Attitude;
 commit
+    CleanUp,
+    EndSlew,
     End,
     Check_Attitude,
     Available,
@@ -299,11 +310,12 @@ commit
 init Idle;
 trans
     EndSlew -> CleanUp { sync bUpdate[job_id]!;  },
-    CleanUp -> Idle { assign slewed = false;  },
+    CleanUp -> Idle { assign slewed = false,
+running[job_id] = false;  },
     End -> Check_Attitude {  },
     Available -> Start {  },
     SlewingBack -> EndSlew { sync reached?; assign stop_time = slewing_end;  },
-    Check_Attitude -> EndSlew { guard !hasToSlewBack(job_id); assign stop_time = jobStopTime(job_id);  },
+    Check_Attitude -> EndSlew { guard !hasToSlewBack(job_id); assign stop_time = new_time;  },
     Idle -> Align { guard job_possible(job_id); sync preHeat[job_id]?; assign running[job_id] = true;  },
     Slewing -> Correct_Attitude { sync reached?;  },
     Penalty -> Idle { sync not_available[job_id]?;  },
@@ -328,12 +340,13 @@ init Idle;
 trans
     Wait -> End { guard offsets[job_id] == end[job_id];  },
     Wait -> Wait { guard time > jobPreheatTime(job_id) && 
-!slewed && 
+!running[job_id] && 
 offsets[job_id] < end[job_id]; assign nextJob(job_id);  },
-    Wait -> Idle { guard !slewed && offsets[job_id] < end[job_id];  },
-    Available -> Wait { guard time == jobStopTime(job_id); sync not_available[job_id]!; assign nextJob(job_id);  },
-    Idle -> PreHeat { guard time == jobPreheatTime(job_id); sync preHeat[job_id]!; assign new_time = jobPreheatTime(job_id), stop = jobStopTime(job_id);  },
-    PreHeat -> Available { guard time == jobStartTime(job_id); sync available[job_id]!; assign stop = jobStopTime(job_id);  };
+    Wait -> Idle { guard !running[job_id] && offsets[job_id] < end[job_id];  },
+    Available -> Wait { guard time == jobStopTime(job_id); sync not_available[job_id]!; assign nextJob(job_id),
+new_time = jobStopTime(job_id);  },
+    Idle -> PreHeat { guard time == jobPreheatTime(job_id); sync preHeat[job_id]!; assign new_time = jobPreheatTime(job_id);  },
+    PreHeat -> Available { guard time == jobStartTime(job_id); sync available[job_id]!;  };
 }
 
 process Job2() {
@@ -354,6 +367,8 @@ cost_rates[job_id]},
     Slewing,
     Correct_Attitude;
 commit
+    CleanUp,
+    EndSlew,
     End,
     Check_Attitude,
     Available,
@@ -361,11 +376,12 @@ commit
 init Idle;
 trans
     EndSlew -> CleanUp { sync bUpdate[job_id]!;  },
-    CleanUp -> Idle { assign slewed = false;  },
+    CleanUp -> Idle { assign slewed = false,
+running[job_id] = false;  },
     End -> Check_Attitude {  },
     Available -> Start {  },
     SlewingBack -> EndSlew { sync reached?; assign stop_time = slewing_end;  },
-    Check_Attitude -> EndSlew { guard !hasToSlewBack(job_id); assign stop_time = jobStopTime(job_id);  },
+    Check_Attitude -> EndSlew { guard !hasToSlewBack(job_id); assign stop_time = new_time;  },
     Idle -> Align { guard job_possible(job_id); sync preHeat[job_id]?; assign running[job_id] = true;  },
     Slewing -> Correct_Attitude { sync reached?;  },
     Penalty -> Idle { sync not_available[job_id]?;  },
@@ -389,11 +405,12 @@ state
 init Idle;
 trans
     Wait -> End { guard offsets[job_id] == end[job_id];  },
-    Wait -> Wait { guard time > jobPreheatTime(job_id) && !slewed && offsets[job_id] < end[job_id]; assign nextJob(job_id);  },
-    Wait -> Idle { guard !slewed && offsets[job_id] < end[job_id];  },
-    Available -> Wait { guard time == jobStopTime(job_id); sync not_available[job_id]!; assign nextJob(job_id);  },
-    Idle -> PreHeat { guard time == jobPreheatTime(job_id); sync preHeat[job_id]!; assign new_time = jobPreheatTime(job_id), stop = jobStopTime(job_id);  },
-    PreHeat -> Available { guard time == jobStartTime(job_id); sync available[job_id]!; assign stop = jobStopTime(job_id);  };
+    Wait -> Wait { guard time > jobPreheatTime(job_id) && !running[job_id] && offsets[job_id] < end[job_id]; assign nextJob(job_id);  },
+    Wait -> Idle { guard !running[job_id] && offsets[job_id] < end[job_id];  },
+    Available -> Wait { guard time == jobStopTime(job_id); sync not_available[job_id]!; assign nextJob(job_id),
+new_time = jobStopTime(job_id);  },
+    Idle -> PreHeat { guard time == jobPreheatTime(job_id); sync preHeat[job_id]!; assign new_time = jobPreheatTime(job_id);  },
+    PreHeat -> Available { guard time == jobStartTime(job_id); sync available[job_id]!;  };
 }
 
 process Job3() {
@@ -414,6 +431,8 @@ cost_rates[job_id]},
     Slewing,
     Correct_Attitude;
 commit
+    CleanUp,
+    EndSlew,
     End,
     Check_Attitude,
     Available,
@@ -421,11 +440,12 @@ commit
 init Idle;
 trans
     EndSlew -> CleanUp { sync bUpdate[job_id]!;  },
-    CleanUp -> Idle { assign slewed = false;  },
+    CleanUp -> Idle { assign slewed = false,
+running[job_id] = false;  },
     End -> Check_Attitude {  },
     Available -> Start {  },
     SlewingBack -> EndSlew { sync reached?; assign stop_time = slewing_end;  },
-    Check_Attitude -> EndSlew { guard !hasToSlewBack(job_id); assign stop_time = jobStopTime(job_id);  },
+    Check_Attitude -> EndSlew { guard !hasToSlewBack(job_id); assign stop_time = new_time;  },
     Idle -> Align { guard job_possible(job_id); sync preHeat[job_id]?; assign running[job_id] = true;  },
     Slewing -> Correct_Attitude { sync reached?;  },
     Penalty -> Idle { sync not_available[job_id]?;  },
@@ -449,11 +469,12 @@ state
 init Idle;
 trans
     Wait -> End { guard offsets[job_id] == end[job_id];  },
-    Wait -> Wait { guard time > jobPreheatTime(job_id) && !slewed && offsets[job_id] < end[job_id]; assign nextJob(job_id);  },
-    Wait -> Idle { guard !slewed && offsets[job_id] < end[job_id];  },
-    Available -> Wait { guard time == jobStopTime(job_id); sync not_available[job_id]!; assign nextJob(job_id);  },
-    Idle -> PreHeat { guard time == jobPreheatTime(job_id); sync preHeat[job_id]!; assign new_time = jobPreheatTime(job_id), stop = jobStopTime(job_id);  },
-    PreHeat -> Available { guard time == jobStartTime(job_id); sync available[job_id]!; assign stop = jobStopTime(job_id);  };
+    Wait -> Wait { guard time > jobPreheatTime(job_id) && !running[job_id] && offsets[job_id] < end[job_id]; assign nextJob(job_id);  },
+    Wait -> Idle { guard !running[job_id] && offsets[job_id] < end[job_id];  },
+    Available -> Wait { guard time == jobStopTime(job_id); sync not_available[job_id]!; assign nextJob(job_id),
+new_time = jobStopTime(job_id);  },
+    Idle -> PreHeat { guard time == jobPreheatTime(job_id); sync preHeat[job_id]!; assign new_time = jobPreheatTime(job_id);  },
+    PreHeat -> Available { guard time == jobStartTime(job_id); sync available[job_id]!;  };
 }
 
 process Battery() {
@@ -467,39 +488,6 @@ long_t abs(long_t a){
     }
     return a;
 }
-long_t a, b, c, d, e, f, g, h, i, j, k, l;
-
-void fa(const id_t job_id){
-    a = sun_power_by_att[0] * (sun_transition - stop);
-}
-void fb(const id_t job_id){
-    b = sun_power_by_att[job_att[job_id]] * (stop - sun_transition);
-    j = sun_power_by_att[0] * (stop_time - stop);
-}
-void fc(const id_t job_id){
-    c = sun_power_by_att[job_att[job_id]] * (stop-start);
-    k = sun_power_by_att[0]*(start - old_time);
-}
-void fd(const id_t job_id){
-    d = battery += sun_power_by_att[job_att[job_id]] * (stop-start);
-    l = battery += sun_power_by_att[0]*(start - sun_transition);
-}
-void fe(const id_t job_id){
-    e = sun_power_by_att[job_att[job_id]] * (sun_transition - start);
-    i = sun_power_by_att[0] * (sun_transition - start);
-}
-void ff(const id_t job_id){
-    f = sun_power_by_att[0]*(sun_transition - old_time);
-}
-void fg(const id_t job_id){
-    g = sun_power_by_att[0] * (sun_transition - stop);
-}
-void fh(const id_t job_id){
-    h = sun_power_by_att[0] * (stop_time - stop);
-}
-void fi(const id_t job_id){
-
-}
 
 void sunlight(const id_t job_id){
     start = start_times[offsets[job_id]-1];
@@ -508,54 +496,56 @@ void sunlight(const id_t job_id){
         // if the sun transitioned after the job start
         if (sun_transition >= start){
             if (sun_transition >= stop){
-                battery += sun_power_by_att[0] * (sun_transition - stop);
+                battery += sun_power_by_att[0] * abs(sun_transition - stop);
             }
             else{
-                battery += sun_power_by_att[job_att[job_id]] * (stop - sun_transition);
+                battery += sun_power_by_att[job_att[job_id]] * abs(stop - sun_transition);
                 //sun exposure during slewing
-                battery += sun_power_by_att[0] * (stop_time - stop);
+                battery += sun_power_by_att[0] * abs(stop_time - stop);
             }
             
         }
         // if 
         else if(sun_transition <= old_time){
-            battery += sun_power_by_att[job_att[job_id]] * (stop-start);
-            battery += sun_power_by_att[0]*(start - old_time);
+            battery += sun_power_by_att[job_att[job_id]] * abs(stop-start);
+            battery += sun_power_by_att[0]*abs(start - old_time);
         }
         else{
-           battery += sun_power_by_att[job_att[job_id]] * (stop-start);
-           battery += sun_power_by_att[0]*(start - sun_transition);
+           battery += sun_power_by_att[job_att[job_id]] * abs(stop-start);
+           battery += sun_power_by_att[0]*abs(start - sun_transition);
         }
 
     }
     else{
         if (sun_transition >= start){
-            battery += sun_power_by_att[job_att[job_id]] * (sun_transition - start);
-            battery += sun_power_by_att[0] * (sun_transition - start);
+            battery += sun_power_by_att[job_att[job_id]] * abs(sun_transition - start);
+            battery += sun_power_by_att[0] * abs(sun_transition - start);
         }
         else if(sun_transition <= old_time){
             //no sun over the period
         }
         else{
-            battery+= sun_power_by_att[0]*(sun_transition - old_time);
+            battery+= sun_power_by_att[0]*abs(sun_transition - old_time);
         }
         //sun exposure during slewing
         if (sun_transition >= stop){
-            battery += sun_power_by_att[0] * (sun_transition - stop);
+            battery += sun_power_by_att[0] * abs(sun_transition - stop);
         }
         else{
-            battery += sun_power_by_att[0] * (stop_time - stop);
+            battery += sun_power_by_att[0] * abs(stop_time - stop);
         }
 
     }
 }
+long_t temp = 0;
 void update(const id_t job_id){
     if(job_id < job_ids-1){
-        battery -= bg_load * (stop_time - old_time);
+        
+        battery -= bg_load * abs(stop_time - old_time);
         start = start_times[offsets[job_id]-1];
         stop = stop_times[offsets[job_id]-1];
         sunlight(job_id);
-        battery -= job_load[job_id]*(stop - start);
+        battery -= job_load[job_id]*abs(stop - start);
         battery -= slew_load*slewing_time[job_id]*2;
         battery -= preheat_load*preheat_time[job_id];
         old_time = stop_time;
@@ -564,12 +554,12 @@ void update(const id_t job_id){
     else{
         // battery was updated after last transition
         if(old_time > sun_start){
-            battery += sun_power_by_att[0] * ( sun_transition - old_time);
-            battery -= bg_load * (sun_transition - old_time);
+            battery += sun_power_by_att[0] * abs( sun_transition - old_time);
+            battery -= bg_load * abs(sun_transition - old_time);
         }
         else{
-            battery += sun_power_by_att[0] * (sun_transition - sun_start);
-            battery -= bg_load * (sun_transition - sun_start);
+            battery += sun_power_by_att[0] * abs(sun_transition - sun_start);
+            battery -= bg_load * abs(sun_transition - sun_start);
         }
         
         old_time = sun_transition;
