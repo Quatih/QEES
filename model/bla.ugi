@@ -52,7 +52,6 @@ guard Align Slewing 1 (-112,-4);
 sync Align Slewing 1 (-112,-20);
 }
 process JobProvider0 graphinfo {
-guard Wait End 1 (-60,-30);
 location End (-32,-32);
 locationName End(-24,-32);
 location Wait (112,-32);
@@ -66,6 +65,7 @@ invariant Available(26,0);
 location PreHeat (190,230);
 locationName PreHeat(34,-14);
 invariant PreHeat(-10,15);
+guard Wait End 1 (-60,-30);
 trans Wait Wait 1 (64,-72);
 trans Wait Wait 1 (-32,-72);
 guard Wait Wait 1 (80,-96);
@@ -135,6 +135,8 @@ guard Align Slewing 1 (-112,-4);
 sync Align Slewing 1 (-112,-20);
 }
 process JobProvider1 graphinfo {
+location End (-32,-32);
+locationName End(-24,-32);
 location Wait (112,-32);
 locationName Wait(-10,-30);
 location Idle (40,80);
@@ -146,10 +148,12 @@ invariant Available(26,0);
 location PreHeat (190,230);
 locationName PreHeat(34,-14);
 invariant PreHeat(-10,15);
+guard Wait End 1 (-60,-30);
 trans Wait Wait 1 (64,-72);
 trans Wait Wait 1 (-32,-72);
 guard Wait Wait 1 (80,-96);
 assign Wait Wait 1 (-40,-104);
+guard Wait Idle 1 (0,0);
 guard Available Wait 1 (9,-40);
 sync Available Wait 1 (17,-8);
 assign Available Wait 1 (9,-24);
@@ -214,6 +218,8 @@ guard Align Slewing 1 (-112,-4);
 sync Align Slewing 1 (-112,-20);
 }
 process JobProvider2 graphinfo {
+location End (-32,-32);
+locationName End(-24,-32);
 location Wait (112,-32);
 locationName Wait(-10,-30);
 location Idle (40,80);
@@ -225,10 +231,12 @@ invariant Available(26,0);
 location PreHeat (190,230);
 locationName PreHeat(34,-14);
 invariant PreHeat(-10,15);
+guard Wait End 1 (-60,-30);
 trans Wait Wait 1 (64,-72);
 trans Wait Wait 1 (-32,-72);
 guard Wait Wait 1 (80,-96);
 assign Wait Wait 1 (-40,-104);
+guard Wait Idle 1 (0,0);
 guard Available Wait 1 (9,-40);
 sync Available Wait 1 (17,-8);
 assign Available Wait 1 (9,-24);
@@ -293,6 +301,8 @@ guard Align Slewing 1 (-112,-4);
 sync Align Slewing 1 (-112,-20);
 }
 process JobProvider3 graphinfo {
+location End (-32,-32);
+locationName End(-24,-32);
 location Wait (112,-32);
 locationName Wait(-10,-30);
 location Idle (40,80);
@@ -304,10 +314,12 @@ invariant Available(26,0);
 location PreHeat (190,230);
 locationName PreHeat(34,-14);
 invariant PreHeat(-10,15);
+guard Wait End 1 (-60,-30);
 trans Wait Wait 1 (64,-72);
 trans Wait Wait 1 (-32,-72);
 guard Wait Wait 1 (80,-96);
 assign Wait Wait 1 (-40,-104);
+guard Wait Idle 1 (0,0);
 guard Available Wait 1 (9,-40);
 sync Available Wait 1 (17,-8);
 assign Available Wait 1 (9,-24);
@@ -319,6 +331,10 @@ sync PreHeat Available 1 (-60,-15);
 assign PreHeat Available 1 (-60,0);
 }
 process Battery graphinfo {
+trans Idle Check 1 (-4,-88);
+select Idle Check 1 (-60,-45);
+sync Idle Check 1 (-60,-15);
+assign Idle Check 1 (-60,0);
 location Init (-96,232);
 locationName Init(-10,-30);
 location Check (176,232);
@@ -327,38 +343,35 @@ location Depletion (304,232);
 locationName Depletion(-10,-30);
 location Idle (40,232);
 locationName Idle(-10,-30);
-trans Idle Check 1 (-4,-64);
-select Idle Check 1 (-36,-112);
-sync Idle Check 1 (-36,-128);
 guard Check Idle 1 (-52,8);
 guard Check Depletion 1 (-24,8);
 }
 process Sun graphinfo {
-guard Eclipse End 1 (-60,-30);
-guard Insolation End 1 (-60,-30);
 location End (-360,152);
 locationName End(-10,-30);
-location Insolation (-480,152);
-locationName Insolation(-32,16);
-invariant Insolation(-176,-8);
-location Eclipse (-232,152);
-locationName Eclipse(-24,16);
-invariant Eclipse(24,-8);
+location Insolation (-520,152);
+locationName Insolation(-80,0);
+invariant Insolation(-168,-32);
+location Eclipse (-192,152);
+locationName Eclipse(24,0);
+invariant Eclipse(24,-32);
 location Init (-360,-48);
 locationName Init(-8,-32);
-trans Insolation Eclipse 1 (-116,16);
+guard Eclipse End 1 (-52,0);
+guard Insolation End 1 (-40,0);
+trans Insolation Eclipse 1 (-132,24);
 trans Insolation Eclipse 1 (-4,128);
 guard Insolation Eclipse 1 (-44,120);
 assign Insolation Eclipse 1 (-44,136);
-trans Init Insolation 1 (-60,-100);
-guard Init Insolation 1 (-52,-92);
-assign Init Insolation 1 (-52,-76);
+trans Init Insolation 1 (-40,-100);
+guard Init Insolation 1 (-32,-92);
+assign Init Insolation 1 (-32,-76);
 trans Eclipse Insolation 1 (-4,-112);
-guard Eclipse Insolation 1 (-76,-48);
-assign Eclipse Insolation 1 (-52,-64);
-trans Init Eclipse 1 (64,-100);
-guard Init Eclipse 1 (-40,-92);
-assign Init Eclipse 1 (-40,-76);
+guard Eclipse Insolation 1 (-68,-144);
+assign Eclipse Insolation 1 (-44,-128);
+trans Init Eclipse 1 (44,-100);
+guard Init Eclipse 1 (-60,-92);
+assign Init Eclipse 1 (-60,-76);
 }
 process End_simulation graphinfo {
 location Running (-48,80);
