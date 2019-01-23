@@ -1,7 +1,7 @@
 
 // Place global declarations here.
 clock time;
-typedef int[0, 10000000] time_t;
+typedef int[-10000000, 10000000] time_t;
 typedef int[-100000, 200000] power_t;
 typedef int[0, 6000000000] battery_t;
 
@@ -76,7 +76,7 @@ ind_t end[job_ids] = { 37, 76, 100, 111, 0};
 bool running[job_ids] = {false, false, false, false, false};
 int job_count[job_ids] = {0,0,0,0,0};
 
-int cost_rates[job_ids] = {2,2,20,100,-1};
+int cost_rates[job_ids] = {1,1,10,20,-1};
 const time_t start_times[112] = 
 {
 5367, 11204, 16951, 22674, 28430, 34307, 40374, 46421, 52289, 58049, 63772, 69513, 75349, 81376, 87459, 93369, 99149, 104876, 110608, 116414, 122392, 128487, 134437, 140238, 145971, 151696, 157475, 163402, 169496, 175495, 181325, 187070, 192792, 198552, 204435, 210504, 216541, 222402,
@@ -147,7 +147,7 @@ bool skipable(const id_t job_id){
 
   if (job_id == 3) return false; // force UHF to execute if able
   // force at 95 % battery
-//  if (battery >= (142272000 )) return false;
+  //if (battery >= (142272000 )) return false;
   return true;
 }
 
@@ -185,7 +185,6 @@ bool hasToSlewBack(const id_t job_id){
   if(job_att[job_id] == -1 ) return false;
   return true; 
 }
-
 
 void startSlewing(){
     slewed = true;
@@ -264,17 +263,21 @@ running[job_id] = false;  },
 process JobProvider0() {
 const id_t job_id=0;
 state
+    Penalty {cost'== cost_rates[job_id]},
     End,
     Wait,
     Idle {time <= jobPreheatTime(job_id)},
     Available {time<=jobStopTime(job_id)},
     PreHeat {time <= jobStartTime(job_id)};
+commit
+    Penalty;
 init Idle;
 trans
-    Wait -> End { guard offsets[job_id] == end[job_id];  },
-    Wait -> Wait { guard time > jobPreheatTime(job_id) && 
+    Penalty -> Wait {  },
+    Wait -> Penalty { guard time > jobPreheatTime(job_id) && 
 !running[job_id] && 
 offsets[job_id] < end[job_id]; assign nextJob(job_id);  },
+    Wait -> End { guard offsets[job_id] == end[job_id];  },
     Wait -> Idle { guard !running[job_id] && 
 offsets[job_id] < end[job_id];  },
     Available -> Wait { guard time == jobStopTime(job_id); sync not_available[job_id]!; assign nextJob(job_id),
@@ -331,18 +334,24 @@ running[job_id] = false;  },
 process JobProvider1() {
 const id_t job_id = 1;
 state
+    Penalty {cost'==
+cost_rates[job_id]},
     End,
     Wait,
     Idle {time <= jobPreheatTime(job_id)},
     Available {time<=jobStopTime(job_id)},
     PreHeat {time <= jobStartTime(job_id)};
+commit
+    Penalty;
 init Idle;
 trans
-    Wait -> End { guard offsets[job_id] == end[job_id];  },
-    Wait -> Wait { guard time > jobPreheatTime(job_id) && 
+    Penalty -> Wait {  },
+    Wait -> Penalty { guard time > jobPreheatTime(job_id) && 
 !running[job_id] && 
 offsets[job_id] < end[job_id]; assign nextJob(job_id);  },
-    Wait -> Idle { guard !running[job_id] && offsets[job_id] < end[job_id];  },
+    Wait -> End { guard offsets[job_id] == end[job_id];  },
+    Wait -> Idle { guard !running[job_id] && 
+offsets[job_id] < end[job_id];  },
     Available -> Wait { guard time == jobStopTime(job_id); sync not_available[job_id]!; assign nextJob(job_id),
 new_time = jobStopTime(job_id);  },
     Idle -> PreHeat { guard time == jobPreheatTime(job_id); sync preHeat[job_id]!; assign new_time = jobPreheatTime(job_id);  },
@@ -397,16 +406,24 @@ running[job_id] = false;  },
 process JobProvider2() {
 const id_t job_id = 2;
 state
+    Penalty {cost'==
+cost_rates[job_id]},
     End,
     Wait,
     Idle {time <= jobPreheatTime(job_id)},
     Available {time<=jobStopTime(job_id)},
     PreHeat {time <= jobStartTime(job_id)};
+commit
+    Penalty;
 init Idle;
 trans
+    Penalty -> Wait {  },
+    Wait -> Penalty { guard time > jobPreheatTime(job_id) && 
+!running[job_id] && 
+offsets[job_id] < end[job_id]; assign nextJob(job_id);  },
     Wait -> End { guard offsets[job_id] == end[job_id];  },
-    Wait -> Wait { guard time > jobPreheatTime(job_id) && !running[job_id] && offsets[job_id] < end[job_id]; assign nextJob(job_id);  },
-    Wait -> Idle { guard !running[job_id] && offsets[job_id] < end[job_id];  },
+    Wait -> Idle { guard !running[job_id] && 
+offsets[job_id] < end[job_id];  },
     Available -> Wait { guard time == jobStopTime(job_id); sync not_available[job_id]!; assign nextJob(job_id),
 new_time = jobStopTime(job_id);  },
     Idle -> PreHeat { guard time == jobPreheatTime(job_id); sync preHeat[job_id]!; assign new_time = jobPreheatTime(job_id);  },
@@ -461,16 +478,24 @@ running[job_id] = false;  },
 process JobProvider3() {
 const id_t job_id = 3;
 state
+    Penalty {cost'==
+cost_rates[job_id]},
     End,
     Wait,
     Idle {time <= jobPreheatTime(job_id)},
     Available {time<=jobStopTime(job_id)},
     PreHeat {time <= jobStartTime(job_id)};
+commit
+    Penalty;
 init Idle;
 trans
+    Penalty -> Wait {  },
+    Wait -> Penalty { guard time > jobPreheatTime(job_id) && 
+!running[job_id] && 
+offsets[job_id] < end[job_id]; assign nextJob(job_id);  },
     Wait -> End { guard offsets[job_id] == end[job_id];  },
-    Wait -> Wait { guard time > jobPreheatTime(job_id) && !running[job_id] && offsets[job_id] < end[job_id]; assign nextJob(job_id);  },
-    Wait -> Idle { guard !running[job_id] && offsets[job_id] < end[job_id];  },
+    Wait -> Idle { guard !running[job_id] && 
+offsets[job_id] < end[job_id];  },
     Available -> Wait { guard time == jobStopTime(job_id); sync not_available[job_id]!; assign nextJob(job_id),
 new_time = jobStopTime(job_id);  },
     Idle -> PreHeat { guard time == jobPreheatTime(job_id); sync preHeat[job_id]!; assign new_time = jobPreheatTime(job_id);  },
@@ -540,8 +565,8 @@ void sunlight(const id_t job_id){
 long_t temp = 0;
 void update(const id_t job_id){
     if(job_id < job_ids-1){
-        
-        battery -= bg_load * abs(stop_time - old_time);
+        temp = (stop_time - old_time);
+        battery -= abs(stop_time - old_time);;
         start = start_times[offsets[job_id]-1];
         stop = stop_times[offsets[job_id]-1];
         sunlight(job_id);
