@@ -25,6 +25,8 @@ time_t stop_time = 0;
 time_t start_time = 0;
 time_t sun_transition = 0;
 
+time_t sun_start = 0;
+
 const int job_ids = 5; 
 // L1-Band, L2-Band, X-Band, UHF, dummy
 typedef int[0, job_ids-1] id_t;
@@ -38,7 +40,7 @@ const power_t sun_power_by_att[no_att] = {5700, 6100, 5700};
 
 bool slewed = false;
 bool insolation = false;
-const int job_att[job_ids] = {1, 1, 2, -1, -1}; // UHF is attitude agnostic
+const int job_att[job_ids] = {1, 1, 2, 0, 0}; // UHF is attitude agnostic
 
 chan preHeat[job_ids], available[job_ids], not_available[job_ids], bUpdate[job_ids];
 
@@ -167,7 +169,7 @@ bool job_possible(const id_t job_id){
 }
 
 bool isAligned(const id_t job_id){
-  if (job_att[job_id] == -1) return true;
+  if (job_att[job_id] == curr_att) return true;
   //if (job_att[job_id] == curr_att) return true;
   return false;
 }
@@ -204,6 +206,7 @@ void setInsolation(){
 void setEclipse(){
     sun_transition = stop_sun[i_sun];
     insolation = false;
+    sun_start = start_sun[i_sun];
     i_sun++;
 }
 
@@ -260,10 +263,14 @@ state
 init Idle;
 trans
     Wait -> End { guard offsets[job_id] == end[job_id];  },
-    Wait -> Wait { guard time > jobPreheatTime(job_id) && !slewed && offsets[job_id] < end[job_id]; assign nextJob(job_id);  },
-    Wait -> Idle { guard !slewed && offsets[job_id] < end[job_id];  },
+    Wait -> Wait { guard time > jobPreheatTime(job_id) && 
+!slewed && 
+offsets[job_id] < end[job_id]; assign nextJob(job_id);  },
+    Wait -> Idle { guard !slewed && 
+offsets[job_id] < end[job_id];  },
     Available -> Wait { guard time == jobStopTime(job_id); sync not_available[job_id]!; assign nextJob(job_id);  },
-    Idle -> PreHeat { guard time == jobPreheatTime(job_id); sync preHeat[job_id]!; assign new_time = jobPreheatTime(job_id), stop = jobStopTime(job_id);  },
+    Idle -> PreHeat { guard time == jobPreheatTime(job_id); sync preHeat[job_id]!; assign new_time = jobPreheatTime(job_id), 
+stop = jobStopTime(job_id);  },
     PreHeat -> Available { guard time == jobStartTime(job_id); sync available[job_id]!; assign stop = jobStopTime(job_id);  };
 }
 
@@ -450,12 +457,8 @@ trans
 }
 
 process Battery() {
-power_t load = 0;
-
-id_t job_id = 0;
 time_t start , stop;
 
-battery_t a, b, c, d, e, f, g, h, i;
 typedef int[-100000000, 100000000] long_t;
 
 long_t abs(long_t a){
@@ -464,21 +467,55 @@ long_t abs(long_t a){
     }
     return a;
 }
+long_t a, b, c, d, e, f, g, h, i, j, k, l;
 
-void update(const id_t job_id){
-    load = bg_load;
+void fa(const id_t job_id){
+    a = sun_power_by_att[0] * (sun_transition - stop);
+}
+void fb(const id_t job_id){
+    b = sun_power_by_att[job_att[job_id]] * (stop - sun_transition);
+    j = sun_power_by_att[0] * (stop_time - stop);
+}
+void fc(const id_t job_id){
+    c = sun_power_by_att[job_att[job_id]] * (stop-start);
+    k = sun_power_by_att[0]*(start - old_time);
+}
+void fd(const id_t job_id){
+    d = battery += sun_power_by_att[job_att[job_id]] * (stop-start);
+    l = battery += sun_power_by_att[0]*(start - sun_transition);
+}
+void fe(const id_t job_id){
+    e = sun_power_by_att[job_att[job_id]] * (sun_transition - start);
+    i = sun_power_by_att[0] * (sun_transition - start);
+}
+void ff(const id_t job_id){
+    f = sun_power_by_att[0]*(sun_transition - old_time);
+}
+void fg(const id_t job_id){
+    g = sun_power_by_att[0] * (sun_transition - stop);
+}
+void fh(const id_t job_id){
+    h = sun_power_by_att[0] * (stop_time - stop);
+}
+void fi(const id_t job_id){
 
-    battery -= load * (new_time - old_time);
-   
-    
+}
 
+void sunlight(const id_t job_id){
     start = start_times[offsets[job_id]-1];
     stop = stop_times[offsets[job_id]-1];
-
     if(insolation){
         // if the sun transitioned after the job start
         if (sun_transition >= start){
-            battery += sun_power_by_att[job_att[job_id]] * (stop - sun_transition);
+            if (sun_transition >= stop){
+                battery += sun_power_by_att[0] * (sun_transition - stop);
+            }
+            else{
+                battery += sun_power_by_att[job_att[job_id]] * (stop - sun_transition);
+                //sun exposure during slewing
+                battery += sun_power_by_att[0] * (stop_time - stop);
+            }
+            
         }
         // if 
         else if(sun_transition <= old_time){
@@ -489,8 +526,7 @@ void update(const id_t job_id){
            battery += sun_power_by_att[job_att[job_id]] * (stop-start);
            battery += sun_power_by_att[0]*(start - sun_transition);
         }
-        // assume less power during slewing
-        battery += sun_power_by_att[0] * (stop_time - stop);
+
     }
     else{
         if (sun_transition >= start){
@@ -503,19 +539,45 @@ void update(const id_t job_id){
         else{
             battery+= sun_power_by_att[0]*(sun_transition - old_time);
         }
+        //sun exposure during slewing
+        if (sun_transition >= stop){
+            battery += sun_power_by_att[0] * (sun_transition - stop);
+        }
+        else{
+            battery += sun_power_by_att[0] * (stop_time - stop);
+        }
+
+    }
+}
+void update(const id_t job_id){
+    if(job_id < job_ids-1){
+        battery -= bg_load * (stop_time - old_time);
+        start = start_times[offsets[job_id]-1];
+        stop = stop_times[offsets[job_id]-1];
+        sunlight(job_id);
+        battery -= job_load[job_id]*(stop - start);
+        battery -= slew_load*slewing_time[job_id]*2;
+        battery -= preheat_load*preheat_time[job_id];
+        old_time = stop_time;
+    }
+    // sun 
+    else{
+        // battery was updated after last transition
+        if(old_time > sun_start){
+            battery += sun_power_by_att[0] * ( sun_transition - old_time);
+            battery -= bg_load * (sun_transition - old_time);
+        }
+        else{
+            battery += sun_power_by_att[0] * (sun_transition - sun_start);
+            battery -= bg_load * (sun_transition - sun_start);
+        }
+        
+        old_time = sun_transition;
     }
 
-    battery -= job_load[job_id]*(stop - start);
-    if(slewed) battery -= slew_load*slewing_time[job_id]*2;
-
-    battery -= preheat_load*preheat_time[job_id];
-        
     if (battery > max_cap){
         battery = max_cap;
     }
-    stop_time = new_time;
-
-  
 }
 state
     Init,
@@ -528,7 +590,7 @@ commit
     Depletion;
 init Init;
 trans
-    Idle -> Check { select job_id : id_t; sync bUpdate[job_id]?;  },
+    Idle -> Check { select job_id : id_t; sync bUpdate[job_id]?; assign update(job_id);  },
     Init -> Idle {  },
     Check -> Idle { guard battery > min_cap;  },
     Check -> Depletion { guard battery <= min_cap;  };
@@ -537,17 +599,21 @@ trans
 process Sun() {
 
 state
+    B_update,
     End,
     Insolation {time <= stop_sun[i_sun]},
     Eclipse {time <= start_sun[i_sun]},
     Init;
 commit
+    B_update,
     Init;
 init Init;
 trans
+    B_update -> Eclipse { sync bUpdate[job_ids-1]!;  },
+    Insolation -> B_update { guard time == stop_sun[i_sun] 
+&& i_sun < l_sun-1; assign setEclipse();  },
     Eclipse -> End { guard i_sun == l_sun-1;  },
     Insolation -> End { guard i_sun == l_sun-1;  },
-    Insolation -> Eclipse { guard time == stop_sun[i_sun] && i_sun < l_sun-1; assign setEclipse();  },
     Init -> Insolation { guard start_sun[0] == 0; assign startInsolation();  },
     Eclipse -> Insolation { guard time == start_sun[i_sun] && i_sun < l_sun-1; assign setInsolation();  },
     Init -> Eclipse { guard start_sun[0] > 0; assign startEclipse();  };
@@ -562,7 +628,7 @@ commit
     Lock;
 init Running;
 trans
-    Running -> Lock { guard time == stop_simulation; sync bUpdate[4]!; assign new_time = stop_simulation;  };
+    Running -> Lock { guard time == stop_simulation;  };
 }
 
 process ADCS() {
@@ -593,4 +659,4 @@ End_S = End_simulation();
 ADC = ADCS();
 
 // List one or more processes to be composed into a system.
-system Jb0, JbP0, Jb1, JbP1, Jb2, JbP2, Jb3, JbP3, S, B, ADC;
+system Jb0, JbP0, Jb1, JbP1, Jb2, JbP2, Jb3, JbP3, S, B, ADC, End_S;
