@@ -1,4 +1,5 @@
-<?xml version="1.0" encoding="utf-8"?><!DOCTYPE nta PUBLIC '-//Uppaal Team//DTD Flat System 1.1//EN' 'http://www.it.uu.se/research/group/darts/uppaal/flat-1_1.dtd'><nta><declaration>// Place global declarations here.
+<?xml version="1.0" encoding="utf-8"?><!DOCTYPE nta PUBLIC '-//Uppaal Team//DTD Flat System 1.1//EN' 'http://www.it.uu.se/research/group/darts/uppaal/flat-1_1.dtd'><nta><declaration>
+// Place global declarations here.
 clock time;
 typedef int[0, 10000000] time_t;
 typedef int[-10000, 20000] power_t;
@@ -14,7 +15,7 @@ battery_t battery = 119808000;
 const battery_t min_cap = 59904000;
 const power_t max_load = 15000;
 time_t stop = 0;
-
+chan rdy, incr;
 const time_t stop_simulation = 65*60*60; // period of the whole current time period.
 time_t new_time = 0;
 time_t slewing_start = 0;
@@ -25,7 +26,7 @@ time_t sun_transition = 0;
 
 const int job_ids = 5; 
 // L1-Band, L2-Band, X-Band, UHF, dummy
-
+typedef int[0, job_ids-1] id_t;
 const power_t job_load[job_ids] = {3863, 3863, 11945, 2630, 0};
 const int preheat_job[job_ids] = {1, 1, 0, 0, 0};
 const int slew_job[job_ids] = {1, 1, 1, 0, 0};
@@ -63,11 +64,9 @@ const int l_l2 = 39;
 const int l_uhf = 11;
 //const time_t start_uhf[l_uhf] = {60917, 66429, 72087, 77787, 83507, 89317, 148887, 154504, 160190, 165900, 171645 };
 //const time_t stop_uhf[l_uhf] = {61141, 66947, 72667, 78366, 84023, 89530, 149330, 155067, 160775, 166457, 172058 };
-
-typedef int[0, 1000] ind_t;
-
-ind_t ind[job_ids] = {0,0,0,0,1000};
-const ind_t offsets[job_ids] = {0, 38, 77, 101, 1000};
+typedef int[0,111] ind_t;
+ind_t ind[job_ids] = {0,0,0,0,0};
+int offsets[job_ids] = {0, 38, 77, 101, 0};
 bool running[job_ids] = {false, false, false, false, false};
 int job_count[job_ids] = {0,0,0,0,0};
 
@@ -112,15 +111,15 @@ const int slewing_time[job_ids] = {
   0 // dummy
 };
 
-int jobStartTime(const int job_id){
+int jobStartTime(const id_t job_id){
 //   if (job_id == 0) return start_l1[ind[job_id]];
 //   if (job_id == 1) return start_l2[ind[job_id]];
 //   if (job_id == 2) return start_x[ind[job_id]];
 //   if (job_id == 3) return start_uhf[ind[job_id]];
-    return start_times[ind[job_id] + offsets[job_id]];
+    return start_times[offsets[job_id]];
 }
 
-int jobStopTime(const int job_id){
+int jobStopTime(const id_t job_id){
 //   if (job_id == 0) return stop_l1[ind[job_id]];
 //   if (job_id == 1) return stop_l2[ind[job_id]];
 //   if (job_id == 2) return stop_x[ind[job_id]];
@@ -128,33 +127,33 @@ int jobStopTime(const int job_id){
     return stop_times[ind[job_id] + offsets[job_id]];
 }
 
-int jobPreheatTime(const int job_id){
+int jobPreheatTime(const id_t job_id){
   // take slewing time into consideration
   return jobStartTime(job_id) - preheat_time[job_id] - slewing_time[job_id];
 }
 
-void nextJob(const int job_id){
-  new_time = jobPreheatTime(job_id);
-  ind[job_id] = ind[job_id] + 1;
+void nextJob(const id_t job_id){
+ // new_time = jobStopTime(job_id);
+  offsets[job_id]++;
 }
 
-bool skipable(const int job_id){
+bool skipable(const id_t job_id){
   if (job_id == 3) return false; // force UHF to execute if able
   return true;
 }
 
-void startJob(const int job_id){
+void startJob(const id_t job_id){
   running[job_id] = true;
   if (job_id &lt; 2) r = r + r_x;//L band
   if (job_id == 2) r = r - r_l; //X-band
 }
 
-void stopJob(const int job_id){
+void stopJob(const id_t job_id){
   running[job_id] = false;
   job_count[job_id] = job_count[job_id] + 1;
 }
 
-bool job_possible(const int job_id){
+bool job_possible(const id_t job_id){
   if(job_id == 3) return true; // prioritize UHF
   //if(slewing) return false; // another L or xband job working
   // heuristics
@@ -163,13 +162,13 @@ bool job_possible(const int job_id){
   return false;
 }
 
-bool isAligned(const int job_id){
+bool isAligned(const id_t job_id){
   if (job_att[job_id] == -1) return true;
   if (job_att[job_id] == curr_att) return true;
   return false;
 }
 
-bool hasToSlewBack(const int job_id){
+bool hasToSlewBack(const id_t job_id){
   if(job_att[job_id] &gt;=0) return true; 
   return false;
 }
@@ -202,8 +201,11 @@ void setEclipse(){
     insolation = false;
     i_sun++;
 }</declaration><template><name>Job0</name><declaration>const int job_id = 0;</declaration><location id="id0" x="8" y="360"><name x="-16" y="376">CleanUp</name></location><location id="id1" x="288" y="360"><name x="264" y="376">EndSlew</name></location><location id="id2" x="616" y="80"><name x="606" y="50">End</name><committed/></location><location id="id3" x="-144" y="72"><name x="-168" y="40">Penalty</name><label kind="invariant" x="-154" y="87">cost'==
-cost_rates[job_id]</label></location><location id="id4" x="-144" y="208"><name x="-154" y="178">Skip</name></location><location id="id5" x="616" y="360"><name x="632" y="314">SlewingBack</name></location><location id="id6" x="616" y="208"><name x="640" y="192">Check_Attitude</name><committed/></location><location id="id7" x="456" y="208"><name x="446" y="178">Available</name></location><location id="id8" x="8" y="208"><name x="-2" y="178">Idle</name></location><location id="id9" x="192" y="208"><name x="182" y="178">Align</name><committed/></location><location id="id10" x="456" y="80"><name x="446" y="50">Start</name></location><location id="id11" x="192" y="72"><name x="144" y="40">Slewing</name></location><location id="id12" x="320" y="208"><name x="310" y="178">Correct_Attitude</name></location><init ref="id8"/><transition><source ref="id1"/><target ref="id0"/></transition><transition><source ref="id0"/><target ref="id8"/></transition><transition><source ref="id2"/><target ref="id6"/></transition><transition><source ref="id7"/><target ref="id10"/></transition><transition><source ref="id5"/><target ref="id1"/><label kind="assignment" x="392" y="376">stop_time = slewing_end</label></transition><transition><source ref="id6"/><target ref="id1"/><label kind="guard" x="344" y="304">!hasToSlewBack(job_id)</label><label kind="assignment" x="344" y="288">stop_time = jobStopTime(job_id)</label><nail x="528" y="288"/><nail x="336" y="288"/></transition><transition><source ref="id8"/><target ref="id9"/><label kind="guard" x="32" y="168">job_possible(job_id)</label><label kind="synchronisation" x="32" y="184">preHeat[job_id]?</label></transition><transition><source ref="id11"/><target ref="id12"/></transition><transition><source ref="id3"/><target ref="id8"/><label kind="synchronisation" x="-96" y="88">not_available[job_id]?</label></transition><transition><source ref="id8"/><target ref="id4"/><label kind="guard" x="-112" y="216">skipable(job_id)</label><label kind="synchronisation" x="-112" y="232">preHeat[job_id]?</label></transition><transition><source ref="id4"/><target ref="id3"/><label kind="synchronisation" x="-256" y="136">available[job_id]?</label></transition><transition><source ref="id10"/><target ref="id2"/><label kind="synchronisation" x="480" y="56">not_available[job_id]?</label><label kind="assignment" x="480" y="40">stopJob(job_id)</label></transition><transition><source ref="id6"/><target ref="id5"/><label kind="guard" x="624" y="248">hasToSlewBack(job_id)</label></transition><transition><source ref="id12"/><target ref="id7"/><label kind="synchronisation" x="344" y="208">available[job_id]?</label><label kind="assignment" x="344" y="223">startJob(job_id)</label></transition><transition><source ref="id9"/><target ref="id12"/><label kind="guard" x="208" y="208">isAligned(job_id)</label></transition><transition><source ref="id9"/><target ref="id11"/><label kind="guard" x="80" y="136">!isAligned(job_id)</label></transition></template><template><name>JobProvider0</name><declaration>const int job_id=0;</declaration><location id="id13" x="112" y="-32"><name x="102" y="-62">Wait</name><committed/></location><location id="id14" x="40" y="80"><name x="30" y="50">Idle</name><label kind="invariant" x="-168" y="64">time &lt;= jobPreheatTime(job_id)</label></location><location id="id15" x="190" y="80"><name x="180" y="50">Available</name><label kind="invariant" x="216" y="80">time&lt;=jobStopTime(job_id)</label></location><location id="id16" x="190" y="230"><name x="224" y="216">PreHeat</name><label kind="invariant" x="180" y="245">time &lt;= jobStartTime(job_id)</label></location><init ref="id14"/><transition><source ref="id13"/><target ref="id13"/><label kind="guard" x="192" y="-128">time &gt; jobPreheatTime(job_id)</label><label kind="assignment" x="72" y="-136">nextJob(job_id)</label><nail x="176" y="-104"/><nail x="80" y="-104"/></transition><transition><source ref="id13"/><target ref="id14"/></transition><transition><source ref="id15"/><target ref="id13"/><label kind="guard" x="160" y="-16">time == jobStopTime(job_id)</label><label kind="assignment" x="160" y="0">nextJob(job_id)</label></transition><transition><source ref="id14"/><target ref="id16"/><label kind="guard" x="-128" y="128">time == jobPreheatTime(job_id)</label><label kind="assignment" x="-128" y="160">new_time = jobPreheatTime(job_id)</label></transition><transition><source ref="id16"/><target ref="id15"/><label kind="guard" x="224" y="112">time == jobStartTime(job_id)</label><label kind="assignment" x="130" y="155">stop = jobStopTime(job_id)</label></transition></template><template><name>P0</name><declaration>int i = 0;</declaration><location id="id17" x="-600" y="-8"><name x="-610" y="-38">t2</name></location><location id="id18" x="-832" y="-24"><name x="-842" y="-54">t1</name></location><init ref="id18"/><transition><source ref="id17"/><target ref="id18"/><label kind="assignment" x="-768" y="-152">nextJob(3)</label><nail x="-728" y="-120"/></transition><transition><source ref="id18"/><target ref="id17"/><label kind="assignment" x="-792" y="104">stop = jobStartTime(3)</label><nail x="-720" y="80"/></transition></template><system>Jb0 = Job0();
-JbP0 = JobProvider0();
+cost_rates[job_id]</label></location><location id="id4" x="-144" y="208"><name x="-154" y="178">Skip</name></location><location id="id5" x="616" y="360"><name x="632" y="314">SlewingBack</name></location><location id="id6" x="616" y="208"><name x="640" y="192">Check_Attitude</name><committed/></location><location id="id7" x="456" y="208"><name x="446" y="178">Available</name></location><location id="id8" x="8" y="208"><name x="-2" y="178">Idle</name></location><location id="id9" x="192" y="208"><name x="182" y="178">Align</name><committed/></location><location id="id10" x="456" y="80"><name x="446" y="50">Start</name></location><location id="id11" x="192" y="72"><name x="144" y="40">Slewing</name></location><location id="id12" x="320" y="208"><name x="310" y="178">Correct_Attitude</name></location><init ref="id8"/><transition><source ref="id1"/><target ref="id0"/></transition><transition><source ref="id0"/><target ref="id8"/></transition><transition><source ref="id2"/><target ref="id6"/></transition><transition><source ref="id7"/><target ref="id10"/></transition><transition><source ref="id5"/><target ref="id1"/><label kind="assignment" x="392" y="376">stop_time = slewing_end</label></transition><transition><source ref="id6"/><target ref="id1"/><label kind="guard" x="344" y="304">!hasToSlewBack(job_id)</label><label kind="assignment" x="344" y="288">stop_time = jobStopTime(job_id)</label><nail x="528" y="288"/><nail x="336" y="288"/></transition><transition><source ref="id8"/><target ref="id9"/><label kind="guard" x="32" y="168">job_possible(job_id)</label><label kind="synchronisation" x="32" y="184">preHeat[job_id]?</label></transition><transition><source ref="id11"/><target ref="id12"/></transition><transition><source ref="id3"/><target ref="id8"/><label kind="synchronisation" x="-96" y="88">not_available[job_id]?</label></transition><transition><source ref="id8"/><target ref="id4"/><label kind="guard" x="-112" y="216">skipable(job_id)</label><label kind="synchronisation" x="-112" y="232">preHeat[job_id]?</label></transition><transition><source ref="id4"/><target ref="id3"/><label kind="synchronisation" x="-256" y="136">available[job_id]?</label></transition><transition><source ref="id10"/><target ref="id2"/><label kind="synchronisation" x="480" y="56">not_available[job_id]?</label><label kind="assignment" x="480" y="40">stopJob(job_id)</label></transition><transition><source ref="id6"/><target ref="id5"/><label kind="guard" x="624" y="248">hasToSlewBack(job_id)</label></transition><transition><source ref="id12"/><target ref="id7"/><label kind="synchronisation" x="344" y="208">available[job_id]?</label><label kind="assignment" x="344" y="223">startJob(job_id)</label></transition><transition><source ref="id9"/><target ref="id12"/><label kind="guard" x="208" y="208">isAligned(job_id)</label></transition><transition><source ref="id9"/><target ref="id11"/><label kind="guard" x="80" y="136">!isAligned(job_id)</label></transition></template><template><name>JobProvider0</name><declaration>const int job_id=0;</declaration><location id="id13" x="112" y="-32"><name x="102" y="-62">Wait</name><committed/></location><location id="id14" x="40" y="80"><name x="30" y="50">Idle</name><label kind="invariant" x="-168" y="64">time &lt;= jobPreheatTime(job_id)</label></location><location id="id15" x="190" y="80"><name x="180" y="50">Available</name><label kind="invariant" x="216" y="80">time&lt;=jobStopTime(job_id)</label></location><location id="id16" x="190" y="230"><name x="224" y="216">PreHeat</name><label kind="invariant" x="180" y="245">time &lt;= jobStartTime(job_id)</label></location><init ref="id14"/><transition><source ref="id13"/><target ref="id13"/><label kind="guard" x="192" y="-128">time &gt; jobPreheatTime(job_id)</label><label kind="assignment" x="72" y="-136">nextJob(job_id)</label><nail x="176" y="-104"/><nail x="80" y="-104"/></transition><transition><source ref="id13"/><target ref="id14"/></transition><transition><source ref="id15"/><target ref="id13"/><label kind="guard" x="160" y="-16">time == jobStopTime(job_id)</label><label kind="assignment" x="160" y="0">nextJob(job_id)</label></transition><transition><source ref="id14"/><target ref="id16"/><label kind="guard" x="-128" y="128">time == jobPreheatTime(job_id)</label><label kind="assignment" x="-128" y="160">new_time = jobPreheatTime(job_id)</label></transition><transition><source ref="id16"/><target ref="id15"/><label kind="guard" x="224" y="112">time == jobStartTime(job_id)</label><label kind="assignment" x="130" y="155">stop = jobStopTime(job_id)</label></transition></template><template><name>P0</name><declaration>int i = 0;
 
+</declaration><location id="id17" x="-856" y="-176"></location><location id="id18" x="-600" y="-8"><name x="-610" y="-38">t2</name></location><location id="id19" x="-832" y="-24"><name x="-842" y="-54">t1</name></location><init ref="id19"/><transition><source ref="id17"/><target ref="id19"/><label kind="synchronisation" x="-904" y="-115">rdy?</label></transition><transition><source ref="id18"/><target ref="id17"/><label kind="synchronisation" x="-788" y="-107">incr!</label><nail x="-704" y="-224"/><nail x="-840" y="-184"/></transition><transition><source ref="id19"/><target ref="id18"/><label kind="assignment" x="-792" y="112">stop = jobPreheatTime(0)</label><nail x="-720" y="80"/></transition></template><template><name>JobHelper0</name><declaration>const id_t job_id = 0;</declaration><location id="id20" x="-136" y="-128"></location><location id="id21" x="-368" y="-128"><name x="-378" y="-158">Idle</name></location><init ref="id21"/><transition><source ref="id20"/><target ref="id21"/><label kind="synchronisation" x="-272" y="-216">rdy!</label><nail x="-264" y="-232"/></transition><transition><source ref="id21"/><target ref="id20"/><label kind="synchronisation" x="-272" y="-88">incr?</label><label kind="assignment" x="-304" y="-120">offsets[job_id]++</label><nail x="-264" y="-48"/></transition></template><system>Jb0 = Job0();
+JbP0 = JobProvider0();
+JbH0 = JobHelper0();
+p = P0();
 // List one or more processes to be composed into a system.
-system P0;</system></nta>
+system p, JbH0;</system></nta>
