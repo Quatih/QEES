@@ -558,14 +558,6 @@ offsets[job_id] < end[job_id];  },
 process Battery() {
 time_t start , stop;
 
-typedef int[-100000000, 100000000] long_t;
-
-long_t abs(long_t a){
-    if(a <0){
-        return a*(-1);
-    }
-    return a;
-}
 void sunlight(const id_t job_id){
     start = start_times[offsets[job_id]];
     stop = stop_times[offsets[job_id]];
@@ -573,56 +565,54 @@ void sunlight(const id_t job_id){
         // if the sun transitioned after the job start
         if (sun_transition >= start){
             if (sun_transition >= stop){
-                battery += sun_power_by_att[0] * abs(sun_transition - stop);
+                battery += sun_power_by_att[0] * (sun_transition - stop);
             }
             else{
-                battery += sun_power_by_att[job_att[job_id]] * abs(stop - sun_transition);
+                battery += sun_power_by_att[job_att[job_id]] * (stop - sun_transition);
                 //sun exposure during slewing
-                battery += sun_power_by_att[0] * abs(stop_time - stop);
+                battery += sun_power_by_att[0] * (stop_time - stop);
             }
             
         }
         // if 
         else if(sun_transition <= old_time){
-            battery += sun_power_by_att[job_att[job_id]] * abs(stop-start);
-            battery += sun_power_by_att[0]*abs(start - old_time);
+            battery += sun_power_by_att[job_att[job_id]] * (stop-start);
+            battery += sun_power_by_att[0]*(start - old_time);
         }
         else{
-           battery += sun_power_by_att[job_att[job_id]] * abs(stop-start);
-           battery += sun_power_by_att[0]*abs(start - sun_transition);
+           battery += sun_power_by_att[job_att[job_id]] * (stop-start);
+           battery += sun_power_by_att[0]*(start - sun_transition);
         }
 
     }
     else{
         if (sun_transition >= start){
-            battery += sun_power_by_att[job_att[job_id]] * abs(sun_transition - start);
-            battery += sun_power_by_att[0] * abs(sun_transition - start);
+            battery += sun_power_by_att[job_att[job_id]] * (sun_transition - start);
+            battery += sun_power_by_att[0] * (sun_transition - start);
         }
         else if(sun_transition <= old_time){
             //no sun over the period
         }
         else{
-            battery+= sun_power_by_att[0]*abs(sun_transition - old_time);
+            battery+= sun_power_by_att[0]*(sun_transition - old_time);
         }
         //sun exposure during slewing
         if (sun_transition >= stop){
-            battery += sun_power_by_att[0] * abs(sun_transition - stop);
+            battery += sun_power_by_att[0] * (sun_transition - stop);
         }
         else{
-            battery += sun_power_by_att[0] * abs(stop_time - stop);
+            battery += sun_power_by_att[0] * (stop_time - stop);
         }
 
     }
 }
-long_t temp = 0;
 void update(const id_t job_id){
     if(job_id < job_ids-1){
-        temp = (stop_time - old_time);
-        battery -= bg_load*abs(stop_time - old_time);;
+        battery -= bg_load*(stop_time - old_time);;
         start = start_times[offsets[job_id]];
         stop = stop_times[offsets[job_id]];
         sunlight(job_id);
-        battery -= job_load[job_id]*abs(stop - start);
+        battery -= job_load[job_id]*(stop - start);
         battery -= slew_load*slewing_time[job_id]*2;
         battery -= preheat_load*preheat_time[job_id];
         old_time = stop_time;
@@ -631,12 +621,12 @@ void update(const id_t job_id){
     else{
         // battery was updated after last transition
         if(old_time > sun_start){
-            battery += sun_power_by_att[0] * abs( sun_transition - old_time);
-            battery -= bg_load * abs(sun_transition - old_time);
+            battery += sun_power_by_att[0] * ( sun_transition - old_time);
+            battery -= bg_load * (sun_transition - old_time);
         }
         else{
-            battery += sun_power_by_att[0] * abs(sun_transition - sun_start);
-            battery -= bg_load * abs(sun_transition - sun_start);
+            battery += sun_power_by_att[0] * (sun_transition - sun_start);
+            battery -= bg_load * (sun_transition - sun_start);
         }
         
         old_time = sun_transition;
