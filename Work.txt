@@ -1,0 +1,20 @@
+14-01
+Both: install required software and read through the delivered assignment and paper about the satellite model to understand requirements.
+15-01
+Both: meeting for 5 hours to start with the model. The model from the paper is used as a basis.
+16-01
+Both: meeting for 4,5 hours to work on the model on seperate parts. Implementing the csv data into the model and creating global declerations.
+17-01
+Sighvatur: Extension of the model. Mainly added the attitude adjustment automata. 
+18-01
+Both: meeting for 5 hours.
+Sighvatur: finishing the model to include all automata's.
+Marko: finishing the model and gathering data about UPPAAL STRATEGO for question 5.
+21-01
+Sighvatur: Bug fixing of the model to successfully run the simulator in UPPAAL.
+Marko: Uncertainty Quantification and relating them to the assignment.
+22-01
+Both: meeting for 5 hours. Still bug fixing the model.
+23-01
+Both: meeting for 5 hours to generate a schedule with UPPAAL. This partly succeeded.
+Both: finishing the paper and trying to generate a correct output of the model. 4 hours.
