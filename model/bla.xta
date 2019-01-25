@@ -169,7 +169,7 @@ bool job_possible(const id_t job_id){
   }
   if(job_id == 3) return true; // prioritize UHF
   // allow at 95 % battery
-  if (battery >= (142272000 )) return true;
+  if (battery >= (134784000 )) return true;
   if((job_id == 2) && (r >= r_l)) return true; // x-band
   if((job_id <2) && (r < (r_x+r_l)*r_l)) return true; // l-band
   return false;
@@ -190,7 +190,7 @@ void startSlewing(const id_t job_id){
     slewed = true;
     // new_time already updated by the job provider
     slewing_start = new_time[job_id];
-    slewing_end = new_time[job_id] + 10*60;
+    slewing_end = new_time[job_id] + slewing_time[job_id];
 } 
 
 void startInsolation(){
@@ -296,7 +296,8 @@ time <=jobPreheatTime(job_id);  },
 !running[job_id] && 
 offsets[job_id] < end[job_id];  },
     Action -> PreHeat { sync schedule[job_id]?;  },
-    Idle -> Action { guard time == jobPreheatTime(job_id); sync preHeat[job_id]!; assign new_time[job_id] = jobPreheatTime(job_id);  },
+    Idle -> Action { guard time == jobPreheatTime(job_id); sync preHeat[job_id]!; assign new_time[job_id] = 
+jobPreheatTime(job_id) + preheat_time[job_id];  },
     PreHeat -> Available { guard time == jobStartTime(job_id); sync available[job_id]!;  };
 }
 
@@ -381,7 +382,8 @@ time <=jobPreheatTime(job_id);  },
 !running[job_id] && 
 offsets[job_id] < end[job_id];  },
     Action -> PreHeat { sync schedule[job_id]?;  },
-    Idle -> Action { guard time == jobPreheatTime(job_id); sync preHeat[job_id]!; assign new_time[job_id] = jobPreheatTime(job_id);  },
+    Idle -> Action { guard time == jobPreheatTime(job_id); sync preHeat[job_id]!; assign new_time[job_id] = 
+jobPreheatTime(job_id) + preheat_time[job_id];  },
     PreHeat -> Available { guard time == jobStartTime(job_id); sync available[job_id]!;  };
 }
 
@@ -466,7 +468,8 @@ time <=jobPreheatTime(job_id);  },
 !running[job_id] && 
 offsets[job_id] < end[job_id];  },
     Action -> PreHeat { sync schedule[job_id]?;  },
-    Idle -> Action { guard time == jobPreheatTime(job_id); sync preHeat[job_id]!; assign new_time[job_id] = jobPreheatTime(job_id);  },
+    Idle -> Action { guard time == jobPreheatTime(job_id); sync preHeat[job_id]!; assign new_time[job_id] = 
+jobPreheatTime(job_id) + preheat_time[job_id];  },
     PreHeat -> Available { guard time == jobStartTime(job_id); sync available[job_id]!;  };
 }
 
@@ -551,7 +554,8 @@ time <=jobPreheatTime(job_id);  },
 !running[job_id] && 
 offsets[job_id] < end[job_id];  },
     Action -> PreHeat { sync schedule[job_id]?;  },
-    Idle -> Action { guard time == jobPreheatTime(job_id); sync preHeat[job_id]!; assign new_time[job_id] = jobPreheatTime(job_id);  },
+    Idle -> Action { guard time == jobPreheatTime(job_id); sync preHeat[job_id]!; assign new_time[job_id] = 
+jobPreheatTime(job_id) + preheat_time[job_id];  },
     PreHeat -> Available { guard time == jobStartTime(job_id); sync available[job_id]!;  };
 }
 
