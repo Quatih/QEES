@@ -175,12 +175,11 @@ bool job_possible(const id_t job_id){
       if(running[id]) return false;
   }
   if(job_id == 3) return true; // prioritize UHF
-
-
+  // allow at a battery level
+  if (battery >= force_at_bat) return true;
   if((job_id == 2) && (r >= r_l)) return true; // x-band
   if((job_id <2) && (r < (r_x+r_l)*r_l)) return true; // l-band
-  // allow at a battery level
-  //if (battery >= force_at_bat) return true;
+
   return false;
 }
 
