@@ -1,1 +1,1 @@
-E<> End_S.Lock && job_count[3] == 11 && job_count[0] == job_count[1] && job_count[2] == (job_count[0] + job_count[1])
+E<> End_S.Lock
