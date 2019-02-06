@@ -76,7 +76,7 @@ bool running[job_ids] = {false, false, false, false};
 bool executing[job_ids] = {false, false, false, false};
 int job_count[job_ids] = {0,0,0,0};
 
-int cost_rates[job_ids] = {5,5,20,100};
+int cost_rates[job_ids] = {5,5,10,100};
 const time_t start_times[l_l1+l_l2+l_x+l_uhf+1] = 
 {
 5367, 11204, 16951, 22674, 28430, 34307, 40374, 46421, 52289, 58049, 63772, 69513, 75349, 81376, 87459, 93369, 99149, 104876, 110608, 116414, 122392, 128487, 134437, 140238, 145971, 151696, 157475, 163402, 169496, 175495, 181325, 187070, 192792, 198552, 204435, 210504, 216541, 222402,
@@ -210,7 +210,7 @@ void stopPreheat(){
 }
 
 void startSlewing(const id_t job_id){
-    slewed = true;;
+    slewed = true;
     // curr_time already updated by the job provider
     slewing_end = curr_time + slewing_time[job_id];
 } 
@@ -289,7 +289,7 @@ cost_rates[job_id];  },
 process JobProvider0() {
 const id_t job_id = 0;
 state
-    PreHeat {time <= jobStartTime(job_id) - slewing_time[job_id]},
+    PreHeat {time <= jobSlewTime(job_id)},
     Wait,
     Check_end,
     End,
@@ -305,7 +305,7 @@ commit
     Next;
 init Idle;
 trans
-    PreHeat -> Slew { guard time == jobStartTime(job_id) - slewing_time[job_id]; assign curr_time = jobStartTime(job_id) - slewing_time[job_id];  },
+    PreHeat -> Slew { guard time == jobSlewTime(job_id); assign curr_time = jobSlewTime(job_id);  },
     Action -> PreHeat { sync schedule[job_id]?; assign curr_time = jobPreheatTime(job_id);  },
     Wait -> Next { sync finish[job_id]?; assign nextJob(job_id);  },
     Available -> Wait { guard time == jobStopTime(job_id); sync not_available[job_id]!; assign curr_time = jobStopTime(job_id);  },
@@ -374,7 +374,7 @@ cost_rates[job_id];  },
 process JobProvider1() {
 const id_t job_id = 1;
 state
-    PreHeat {time <= jobStartTime(job_id) - slewing_time[job_id]},
+    PreHeat {time <= jobSlewTime(job_id)},
     Wait,
     Check_end,
     End,
@@ -390,7 +390,7 @@ commit
     Next;
 init Idle;
 trans
-    PreHeat -> Slew { guard time == jobStartTime(job_id) - slewing_time[job_id]; assign curr_time = jobStartTime(job_id) - slewing_time[job_id];  },
+    PreHeat -> Slew { guard time == jobSlewTime(job_id); assign curr_time = jobSlewTime(job_id);  },
     Action -> PreHeat { sync schedule[job_id]?; assign curr_time = jobPreheatTime(job_id);  },
     Wait -> Next { sync finish[job_id]?; assign nextJob(job_id);  },
     Available -> Wait { guard time == jobStopTime(job_id); sync not_available[job_id]!; assign curr_time = jobStopTime(job_id);  },
@@ -459,7 +459,7 @@ cost_rates[job_id];  },
 process JobProvider2() {
 const id_t job_id = 2;
 state
-    PreHeat {time <= jobStartTime(job_id) - slewing_time[job_id]},
+    PreHeat {time <= jobSlewTime(job_id)},
     Wait,
     Check_end,
     End,
@@ -475,7 +475,7 @@ commit
     Next;
 init Idle;
 trans
-    PreHeat -> Slew { guard time == jobStartTime(job_id) - slewing_time[job_id]; assign curr_time = jobStartTime(job_id) - slewing_time[job_id];  },
+    PreHeat -> Slew { guard time == jobSlewTime(job_id); assign curr_time = jobSlewTime(job_id);  },
     Action -> PreHeat { sync schedule[job_id]?; assign curr_time = jobPreheatTime(job_id);  },
     Wait -> Next { sync finish[job_id]?; assign nextJob(job_id);  },
     Available -> Wait { guard time == jobStopTime(job_id); sync not_available[job_id]!; assign curr_time = jobStopTime(job_id);  },
@@ -544,7 +544,7 @@ cost_rates[job_id];  },
 process JobProvider3() {
 const id_t job_id = 3;
 state
-    PreHeat {time <= jobStartTime(job_id) - slewing_time[job_id]},
+    PreHeat {time <= jobSlewTime(job_id)},
     Wait,
     Check_end,
     End,
@@ -560,7 +560,7 @@ commit
     Next;
 init Idle;
 trans
-    PreHeat -> Slew { guard time == jobStartTime(job_id) - slewing_time[job_id]; assign curr_time = jobStartTime(job_id) - slewing_time[job_id];  },
+    PreHeat -> Slew { guard time == jobSlewTime(job_id); assign curr_time = jobSlewTime(job_id);  },
     Action -> PreHeat { sync schedule[job_id]?; assign curr_time = jobPreheatTime(job_id);  },
     Wait -> Next { sync finish[job_id]?; assign nextJob(job_id);  },
     Available -> Wait { guard time == jobStopTime(job_id); sync not_available[job_id]!; assign curr_time = jobStopTime(job_id);  },

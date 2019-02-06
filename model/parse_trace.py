@@ -1,5 +1,4 @@
 from pandas import read_table, DataFrame, date_range, concat
-from sys import exit
 import os
 import sys
 import re
@@ -29,7 +28,6 @@ def parse(fname):
 		vars.append(a[1].split(" "))
 		states.append(a[0].replace('( ','').strip().split(" "))
 
-
 	name	= lambda sep,x: x.split(sep)[0]
 	value	= lambda sep,x: x.split(sep)[1]
 
@@ -42,10 +40,12 @@ def parse(fname):
 		data = states,
 		columns = [name('.',x) for x in states[0]],
 	).applymap(lambda x:value('.', x))
-
+	
 	return concat([vars_, states_], axis=1)
 
 if __name__== "__main__":
 	df = parse(str(sys.argv[1]))
 	df.to_csv("out.csv")
-	df[['time', 'B.load']].drop_duplicates(keep='first').to_csv("kibam.csv",header=False, index=False)
+	a = df[['time', 'B.load']]
+	a.drop_duplicates(keep='first').to_csv("kibam.csv",header=False, index=False)
+
