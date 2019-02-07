@@ -515,6 +515,9 @@ sync End Idle 1 (-24,8);
 select Idle Start 1 (-128,-28);
 sync Idle Start 1 (-128,-12);
 assign Idle Start 1 (-128,4);
+select Idle Start 2 (-128,-28);
+sync Idle Start 2 (-128,-12);
+assign Idle Start 2 (-128,4);
 }
 process Preheater graphinfo {
 sync End Idle 1 (-32,8);

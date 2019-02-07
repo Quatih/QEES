@@ -4,8 +4,6 @@ typedef int[-10000000, 10000000] time_t;
 typedef int[-100000, 200000] power_t;
 typedef int[0, 6000000000] battery_t;
 
-
-
 const power_t bg_load = 2989;
 const battery_t max_cap = 149760000;
 const battery_t force_at_bat = 134784000;
@@ -14,11 +12,10 @@ battery_t battery = 119808000;
 const battery_t min_cap = 59904000;
 const power_t max_load = 15000;
 
-const time_t stop_simulation = 65*60*60; // period of the whole current time period.
+const time_t stop_simulation = 36*60*60; // period of the whole current time period.
 
 time_t slewing_end = 0;
 time_t preheat_end = 0;
-time_t sun_transition = 0;
 
 const int job_ids = 4; 
 time_t curr_time = 0;
@@ -39,12 +36,13 @@ typedef int[0, no_att-1] att_t;
 const att_t job_att[job_ids] = {1, 1, 2, 0}; // UHF is attitude agnostic
 
 int curr_att = 0;
+int target_att = 0;
 const power_t sun_power_by_att[att_t] = {5700, 6100, 5700};
 
 bool slewed = false;
 bool insolation = false;
 bool preheating = false;
-chan check[job_ids], preheat[job_ids], available[job_ids], not_available[job_ids], finish[job_ids], align[job_ids];
+chan check[job_ids], preheat[job_ids], available[job_ids], not_available[job_ids], finish[job_ids], align[job_ids], slewback[job_ids];
 chan schedule[job_ids], skip[job_ids];
 chan reached, bUpdate, preheated;
 // length of sun times
@@ -92,7 +90,6 @@ const time_t stop_times[l_l1+l_l2+l_x+l_uhf+1] =
 61141, 66947, 72667, 78366, 84023, 89530, 149330, 155067, 160775, 166457, 172058, stop_simulation*2
 };
 
-
 // heuristic variables for l and x band ratios 
 int r = 0;
 const int r_l = 1;
@@ -138,7 +135,6 @@ time_t jobPreheatTime(const id_t job_id){
   return jobSlewTime(job_id) - preheat_time[job_id];
 }
 
-
 void nextJob(const id_t job_id){
   offsets[job_id]++;
 }
@@ -146,7 +142,7 @@ void nextJob(const id_t job_id){
 bool skipable(const id_t job_id){ 
   if (job_id == 3) return false; // force UHF to execute if able
   // force at a specific battery level
-  //if (battery >= force_at_bat) return false;
+  if (battery >= force_at_bat) return false;
   return true;
 }
 
@@ -171,12 +167,12 @@ void stopJob(const id_t job_id){
 
 bool job_possible(const id_t job_id){
   // heuristics
+  if(job_id == 3) return true; // prioritize UHF
   for (id:id_t){
       if(running[id]) return false;
   }
-  if(job_id == 3) return true; // prioritize UHF
   // allow at a battery level
-  if (battery >= force_at_bat) return true;
+  //if (battery >= force_at_bat) return true;
   if((job_id == 2) && (r >= r_l)) return true; // x-band
   if((job_id <2) && (r < (r_x+r_l)*r_l)) return true; // l-band
 
@@ -213,11 +209,20 @@ void startSlewing(const id_t job_id){
     slewed = true;
     // curr_time already updated by the job provider
     slewing_end = curr_time + slewing_time[job_id];
+    target_att = job_att[job_id];
+} 
+void startSlewback(const id_t job_id){
+    slewed = true;
+    // curr_time already updated by the job provider
+    slewing_end = curr_time + slewing_time[job_id];
+    target_att = 0; // defaiult
+    curr_att = 0;
 } 
 
 void stopSlewing(){
     slewed = false;
     curr_time = slewing_end;
+    curr_att = target_att;
 } 
 
 void startInsolation(){
@@ -281,7 +286,7 @@ cost_rates[job_id];  },
     End -> Idle { sync finish[job_id]!; assign endRun(job_id);  },
     Stop -> Check_Attitude { sync bUpdate!;  },
     Idle -> Skip { guard skipable(job_id); sync check[job_id]?;  },
-    Check_Attitude -> SlewingBack { guard hasToSlewBack(job_id); sync align[job_id]!;  },
+    Check_Attitude -> SlewingBack { guard hasToSlewBack(job_id); sync slewback[job_id]!;  },
     Align -> Correct_Attitude { guard isAligned(job_id);  },
     Align -> Slewing { guard !isAligned(job_id); sync align[job_id]!;  };
 }
@@ -366,7 +371,7 @@ cost_rates[job_id];  },
     End -> Idle { sync finish[job_id]!; assign endRun(job_id);  },
     Stop -> Check_Attitude { sync bUpdate!;  },
     Idle -> Skip { guard skipable(job_id); sync check[job_id]?;  },
-    Check_Attitude -> SlewingBack { guard hasToSlewBack(job_id); sync align[job_id]!;  },
+    Check_Attitude -> SlewingBack { guard hasToSlewBack(job_id); sync slewback[job_id]!;  },
     Align -> Correct_Attitude { guard isAligned(job_id);  },
     Align -> Slewing { guard !isAligned(job_id); sync align[job_id]!;  };
 }
@@ -451,7 +456,7 @@ cost_rates[job_id];  },
     End -> Idle { sync finish[job_id]!; assign endRun(job_id);  },
     Stop -> Check_Attitude { sync bUpdate!;  },
     Idle -> Skip { guard skipable(job_id); sync check[job_id]?;  },
-    Check_Attitude -> SlewingBack { guard hasToSlewBack(job_id); sync align[job_id]!;  },
+    Check_Attitude -> SlewingBack { guard hasToSlewBack(job_id); sync slewback[job_id]!;  },
     Align -> Correct_Attitude { guard isAligned(job_id);  },
     Align -> Slewing { guard !isAligned(job_id); sync align[job_id]!;  };
 }
@@ -536,7 +541,7 @@ cost_rates[job_id];  },
     End -> Idle { sync finish[job_id]!; assign endRun(job_id);  },
     Stop -> Check_Attitude { sync bUpdate!;  },
     Idle -> Skip { guard skipable(job_id); sync check[job_id]?;  },
-    Check_Attitude -> SlewingBack { guard hasToSlewBack(job_id); sync align[job_id]!;  },
+    Check_Attitude -> SlewingBack { guard hasToSlewBack(job_id); sync slewback[job_id]!;  },
     Align -> Correct_Attitude { guard isAligned(job_id);  },
     Align -> Slewing { guard !isAligned(job_id); sync align[job_id]!;  };
 }
@@ -687,7 +692,8 @@ trans
     Slewing -> End { guard time == slewing_end; sync reached!; assign stopSlewing();  },
     Start -> Slewing { sync bUpdate!;  },
     End -> Idle { sync bUpdate!;  },
-    Idle -> Start { select job_id : id_t; sync align[job_id]?; assign startSlewing(job_id);  };
+    Idle -> Start { select job_id : id_t; sync align[job_id]?; assign startSlewing(job_id);  },
+    Idle -> Start { select job_id : id_t; sync slewback[job_id]?; assign startSlewback(job_id);  };
 }
 
 process Preheater() {
