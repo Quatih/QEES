@@ -1,7 +1,1 @@
-//This file was generated from UPPAAL 4.0.2 (rev. 2491), August 2006
-
-/*
-
-*/
-
-E<> End_S.Lock
+E<> End_S.Lock && ((job_count[0] - job_count[1]) <= 2 && (job_count[0] - job_count[1]) >= -2) && battery > 89856000  
