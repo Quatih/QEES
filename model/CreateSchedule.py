@@ -42,20 +42,9 @@ def parse(fname):
 
   df_var = pd.DataFrame(values, columns = vars)
   df_states = pd.DataFrame(state, columns = name)
-	# name	= lambda sep,x: x.split(sep)[0]
-	# value	= lambda sep,x: x.split(sep)[1]
-  
-	# vars_ = DataFrame(
-	# 	data = vars,
-	# 	columns = [name('=',x) for x in vars[0]],
-	# ).applymap(lambda x:int(value('=', x)))
 
-	# states_ = DataFrame(
-	# 	data = states,
-	# 	columns = [name('.',x) for x in states[0]],
-	# ).applymap(lambda x:value('.', x))
-	
   return pd.concat([df_var, df_states], axis=1)
+  
 def gen_schedules(df):
 
   start_times = [5367, 11204, 16951, 22674, 28430, 34307, 40374, 46421, 52289, 58049, 63772, 69513, 75349, 81376, 87459, 93369, 99149, 104876, 110608, 116414, 122392, 128487, 134437, 140238, 145971, 151696, 157475, 163402, 169496, 175495, 181325, 187070, 192792, 198552, 204435, 210504, 216541, 222402,
