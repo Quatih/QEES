@@ -87,11 +87,12 @@ def gen_schedules(df):
           }
         addf = pd.DataFrame(add)
         of[i] = of[i].append(addf,ignore_index=True)
+  names = ["L1-band", "L2-band", "X-band", "UHF"]
   for i in range(len(of)):
     lis = [x for x in range(1, len(of[i])+1)]
     of[i].iloc[:,0:3] = of[i].iloc[:,0:3].astype(int)
     outp = pd.concat([pd.DataFrame(lis, columns = ['Access']),of[i]],sort =False,axis=1)
-    outp.to_csv(jobs[i] + ".csv",index=False)
+    outp.to_csv(names[i] + ".csv",index=False)
 
 if __name__== "__main__":
   df = parse(str(sys.argv[1]))
