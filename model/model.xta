@@ -6,13 +6,13 @@ typedef int[0, 6000000000] battery_t;
 
 const power_t bg_load = 2989;
 const battery_t max_cap = 149760000;
-const battery_t force_at_bat = 134784000;
+const battery_t force_at_bat = 142272000; // 95% battery
 battery_t battery = 119808000;
 
 const battery_t min_cap = 59904000;
 const power_t max_load = 15000;
 
-const time_t stop_simulation = 36*60*60; // period of the whole current time period.
+const time_t stop_simulation = 32*60*60; // period of the whole current time period.
 
 time_t slewing_end = 0;
 time_t preheat_end = 0;
@@ -141,7 +141,7 @@ void nextJob(const id_t job_id){
 
 bool skipable(const id_t job_id){ 
   if (job_id == 3) return false; // force UHF to execute if able
-  // force at a specific battery level
+  //// force at a specific battery level
   if (battery >= force_at_bat) return false;
   return true;
 }
@@ -172,7 +172,7 @@ bool job_possible(const id_t job_id){
       if(running[id]) return false;
   }
   // allow at a battery level
-  //if (battery >= force_at_bat) return true;
+  if (battery >= force_at_bat) return true;
   if((job_id == 2) && (r >= r_l)) return true; // x-band
   if((job_id <2) && (r < (r_x+r_l)*r_l)) return true; // l-band
 
