@@ -12,7 +12,7 @@ battery_t battery = 119808000;
 const battery_t min_cap = 59904000;
 const power_t max_load = 15000;
 
-const time_t stop_simulation = 32*60*60; // period of the whole current time period.
+const time_t stop_simulation = 24*60*60; // period of the whole current time period.
 
 time_t slewing_end = 0;
 time_t preheat_end = 0;
@@ -148,6 +148,7 @@ bool skipable(const id_t job_id){
 
 void run(const id_t job_id){
   running[job_id] = true;
+  job_count[job_id] = job_count[job_id] + 1;
 }
 
 void endRun(const id_t job_id){
@@ -162,7 +163,6 @@ void startJob(const id_t job_id){
 
 void stopJob(const id_t job_id){
   executing[job_id] = false;
-  job_count[job_id] = job_count[job_id] + 1;
 }
 
 bool job_possible(const id_t job_id){
