@@ -4,7 +4,62 @@ import numpy as np
 from sys import exit
 import os
 import sys
-from parse_trace import parse
+
+def splitvar(vars):
+  names = [var.split('=')[0] for var in vars[0]]
+  values = [pd.to_numeric([var_.split('=')[1] for var_ in var],downcast='integer') for var in vars]
+  return names, values
+
+def splitstate(in_states):
+  aut = [state.split('.')[0] for state in in_states[0]]
+  states = [[state_.split('.')[1] for state_ in state] for state in in_states]
+  return aut, states
+
+def parse(fname):
+  f = open(fname, 'r', encoding='utf16')
+
+  lines = []
+  content = f.read().splitlines()
+  for i in range(len(content)):
+    if "State:" in content[i]:
+      arr = []
+      for j in range(i+1, len(content)):
+        if "Trans" in content[j]:
+          lines.append(''.join(arr))
+          i = j
+          break
+        elif "Del" in content[j]:
+          lines.append(''.join(arr))
+          i = j
+          break
+        else:
+          arr.append(content[j])
+  vars, states = [], []
+  for l in lines:
+    a = l.split(')')
+    vars.append(a[1].split(" "))
+    states.append(a[0].replace('( ','').strip().split(" "))
+
+  vars, values = splitvar(vars)
+  name, state = splitstate(states)
+
+  df_var = pd.DataFrame(values, columns = vars)
+  df_states = pd.DataFrame(state, columns = name)
+	# name	= lambda sep,x: x.split(sep)[0]
+	# value	= lambda sep,x: x.split(sep)[1]
+  
+	# vars_ = DataFrame(
+	# 	data = vars,
+	# 	columns = [name('=',x) for x in vars[0]],
+	# ).applymap(lambda x:int(value('=', x)))
+
+	# states_ = DataFrame(
+	# 	data = states,
+	# 	columns = [name('.',x) for x in states[0]],
+	# ).applymap(lambda x:value('.', x))
+	
+  return pd.concat([df_var, df_states], axis=1)
+
 
 if __name__== "__main__":
   df = parse(str(sys.argv[1]))
@@ -54,9 +109,6 @@ if __name__== "__main__":
         of[i] = of[i].append(addf,ignore_index=True)
   for i in range(len(of)):
     lis = [x for x in range(1, len(of[i])+1)]
-    AccDict = {
-      'Access' : lis
-    }
     of[i].iloc[:,0:3] = of[i].iloc[:,0:3].astype(int)
-    outp = pd.concat([pd.DataFrame(AccDict),of[i]],sort =False,axis=1)
+    outp = pd.concat([pd.DataFrame(lis, columns = ['Access']),of[i]],sort =False,axis=1)
     outp.to_csv(jobs[i] + ".csv",index=False)
