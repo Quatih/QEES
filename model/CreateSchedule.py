@@ -97,7 +97,8 @@ def gen_schedules(df):
 if __name__== "__main__":
   df = parse(str(sys.argv[1]))
   df.to_csv("out.csv")
+  gen_schedules(df)
   a = df[['time', 'B.load']]
   a.drop_duplicates(subset = 'time',keep='last').to_csv("kibam.csv",header=False, index=False)
-  gen_schedules(df)
+  
   
